@@ -1,11 +1,18 @@
-def add(a, b):
-    return a + b
+import cv2
+import matplotlib.pyplot as plt
 
-def test_add():
-    assert add(2, 3) == 5
-    assert add(-1, 1) == 0
-    assert add(0, 0) == 0
+image_path = 'bus.jpg'  # Replace with your image path
+image = cv2.imread(image_path)
 
-if __name__ == "__main__":
-    test_add()
-    print("All tests passed.")
+if image is None:
+    print(f"Error: Could not read image from {image_path}")
+else:
+    print(f"Image loaded successfully from {image_path}")
+    # Convert BGR to RGB for displaying with matplotlib
+    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    
+    # Display the image
+    plt.imshow(image_rgb)
+    plt.axis('off')
+    plt.show()
+
