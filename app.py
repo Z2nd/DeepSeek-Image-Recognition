@@ -74,10 +74,9 @@ else:
                 if input_image_bgr is None:
                     raise FileNotFoundError(f"Could not read image at {INPUT_IMAGE_PATH}")
 
-                print("\n--- Original Image ---")
+                # print("\n--- Original Image ---")
                 input_image_rgb = cv2.cvtColor(input_image_bgr, cv2.COLOR_BGR2RGB)
                 # display(Image.fromarray(input_image_rgb))
-                # Image.fromarray(input_image_rgb).show()  # Display the original image
 
                 # Call the shared processing function
                 print("\n--- Processing Image ---")
@@ -90,7 +89,7 @@ else:
                 if annotated_image_bgr is not None:
                     annotated_image_rgb = cv2.cvtColor(annotated_image_bgr, cv2.COLOR_BGR2RGB)
                     # display(Image.fromarray(annotated_image_rgb))
-                    Image.fromarray(annotated_image_rgb).show()
+                    Image.fromarray(annotated_image_rgb).show()  # Display the annotated image
                 else:
                     print("Annotated image is not available.")
 

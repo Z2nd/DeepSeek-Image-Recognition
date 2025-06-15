@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Description Generator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Image to Natural Language Description</h1>
+        <p>Upload an image and the AI will describe the scene for you.</p>
+        <div class="upload-container">
+            <input type="file" id="imageUpload" accept="image/*">
+            <button id="processBtn">Process Image</button>
+        </div>
+        <div id="spinner" class="spinner" style="display:none;"></div>
+        <div id="results" class="results-container" style="display:none;">
+            <div class="image-box">
+                <h3>Annotated Image</h3>
+                <img id="annotatedImage" src="" alt="Annotated Image">
+            </div>
+            <div class="description-box">
+                <h3>Generated Description</h3>
+                <p id="descriptionText"></p>
+            </div>
+        </div>
+        <div id="error" class="error-message" style="display:none;"></div>
+    </div>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

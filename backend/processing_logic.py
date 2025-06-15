@@ -1,5 +1,6 @@
 import requests
 import json
+import traceback
 
 
 def detect_objects_yolo(image_np, model):
