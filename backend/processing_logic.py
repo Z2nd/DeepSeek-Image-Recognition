@@ -4,58 +4,62 @@ import json
 import requests
 from ultralytics import YOLO
 from sklearn.cluster import KMeans
+import time
 
 def detect_objects_yolo(image_bgr, yolo_model):
     """
-    使用YOLO分割模型进行实例分割，提取类别、置信度、边界框、掩码面积、颜色直方图和K-Means主导颜色RGB。
+    Perform instance segmentation using the YOLO model, extracting class, confidence, bounding box, mask area, color histogram, and dominant color RGB via K-Means.
     Args:
-        image_bgr: BGR格式的NumPy图像数组
-        yolo_model: 加载的YOLO分割模型
+        image_bgr: NumPy image array in BGR format
+        yolo_model: Loaded YOLO segmentation model
     Returns:
-        detections_list: 检测结果列表，包含类别、置信度、边界框、掩码面积、直方图和主导颜色RGB
-        annotated_image: 标注后的图像（BGR格式，含边界框、掩码轮廓和主导颜色）
+        detections_list: List of detection results, including class, confidence, bounding box, mask area, histogram, and dominant color RGB
+        annotated_image: Annotated image (BGR format, with bounding boxes, mask contours, and dominant color)
     """
     try:
         if yolo_model is None:
             print("Error: YOLO model is not loaded.")
             return [], image_bgr
 
-        # 进行目标检测和分割
+        # Perform object detection and segmentation
         results = yolo_model(image_bgr)
         detections_list = []
         annotated_image = image_bgr.copy()
+        img_height, img_width = image_bgr.shape[:2]
 
         for result in results:
             boxes = result.boxes
             masks = result.masks if hasattr(result, 'masks') and result.masks is not None else None
 
             for idx, box in enumerate(boxes):
-                # 提取边界框坐标、类别和置信度
+                # Extract bounding box coordinates, class, and confidence
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
                 conf = float(box.conf)
                 cls = int(box.cls)
                 class_name = yolo_model.names[cls]
 
-                # 获取掩码（如果存在）
+                # Extract mask (if available)
                 mask_area = 0.0
                 mask = None
                 if masks is not None and idx < len(masks):
-                    mask = masks.data[idx].cpu().numpy()  # 掩码为布尔数组
-                    mask_area = np.sum(mask) / (image_bgr.shape[0] * image_bgr.shape[1])  # 面积占比
-                    # 绘制掩码轮廓
+                    mask = masks.data[idx].cpu().numpy() # Mask as boolean array
+                    # Resize mask to match input image dimensions
+                    mask = cv2.resize(mask.astype(np.uint8), (img_width, img_height), interpolation=cv2.INTER_NEAREST)
+                    mask_area = np.sum(mask) / (image_bgr.shape[0] * image_bgr.shape[1])  # Area proportion
+                    # Draw mask contours
                     contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                     cv2.drawContours(annotated_image, contours, -1, (255, 0, 0), 2)
 
-                # 提取掩码或边界框区域
+                # Extract mask or bounding box region
                 roi = image_bgr * mask[..., None] if mask is not None else image_bgr[y1:y2, x1:x2]
                 if roi.size == 0:
                     continue
 
-                # 计算颜色直方图（RGB，16 bins/通道）
+                # Compute color histogram (RGB, 8 bins/channel)
                 hist_r = cv2.calcHist([roi], [2], mask.astype(np.uint8) if mask is not None else None, [8], [0, 256])
                 hist_g = cv2.calcHist([roi], [1], mask.astype(np.uint8) if mask is not None else None, [8], [0, 256])
                 hist_b = cv2.calcHist([roi], [0], mask.astype(np.uint8) if mask is not None else None, [8], [0, 256])
-                # 归一化直方图
+                # Normalize histogram
                 hist_r = hist_r.flatten().tolist()
                 hist_g = hist_g.flatten().tolist()
                 hist_b = hist_b.flatten().tolist()
@@ -65,16 +69,16 @@ def detect_objects_yolo(image_bgr, yolo_model):
                     hist_g = [x / hist_sum for x in hist_g]
                     hist_b = [x / hist_sum for x in hist_b]
 
-                # 使用K-Means提取主导颜色（RGB）
+                # Extract dominant color using K-Means (RGB)
                 pixels = roi[mask > 0] if mask is not None else roi.reshape(-1, 3)
                 if len(pixels) > 0:
                     kmeans = KMeans(n_clusters=1, random_state=0, n_init=10)
                     kmeans.fit(pixels)
                     dominant_color_rgb = kmeans.cluster_centers_[0].astype(int).tolist()  # [R, G, B]
                 else:
-                    dominant_color_rgb = [0, 0, 0]  # 默认值
+                    dominant_color_rgb = [0, 0, 0]  # Default value
 
-                # 添加到检测结果
+                # Add to detection results
                 detections_list.append({
                     "class": class_name,
                     "confidence": conf,
@@ -88,7 +92,7 @@ def detect_objects_yolo(image_bgr, yolo_model):
                     }
                 })
 
-                # 绘制边界框和标签（包含RGB值）
+                # Draw bounding box and label (including RGB value)
                 label = f"{class_name} (RGB: {dominant_color_rgb}) {conf:.2f}"
                 cv2.rectangle(annotated_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 cv2.putText(annotated_image, label, (x1, y1 - 10),
@@ -102,13 +106,13 @@ def detect_objects_yolo(image_bgr, yolo_model):
 
 def format_detections_as_json_for_llm(detections_list, image_shape, capture_time=None):
     """
-    将检测结果格式化为JSON字符串，包含主导颜色RGB、掩码面积、直方图和拍摄时间。
+    Format detection results into a JSON string, including dominant color RGB, mask area, histogram, and capture time.
     Args:
-        detections_list: 检测结果列表
-        image_shape: 图像尺寸 (height, width, channels)
-        capture_time: 拍摄时间字符串（可选）
+        detections_list: List of detection results
+        image_shape: Image dimensions (height, width, channels)
+        capture_time: Capture time string (optional)
     Returns:
-        JSON字符串
+        JSON string
     """
     if not detections_list:
         data = {
@@ -139,16 +143,18 @@ def format_detections_as_json_for_llm(detections_list, image_shape, capture_time
     
     return json.dumps(data)
 
-def answer_question_with_deepseek(json_detections, question, ollama_api_url, model_name):
+def answer_question_with_deepseek(json_detections, question, ollama_api_url, model_name, max_retries=3, retry_delay=2):
     """
-    根据检测结果、掩码面积、直方图、主导颜色RGB、拍摄时间和用户问题，使用DeepSeek生成回答。
+    Generate answers using DeepSeek based on detection results, mask area, histogram, dominant color RGB, capture time, and user question.
     Args:
-        json_detections: 检测结果的JSON字符串
-        question: 用户输入的问题
-        ollama_api_url: Ollama API的URL
-        model_name: DeepSeek模型名称
+        json_detections: JSON string of detection results
+        question: User input question
+        ollama_api_url: Ollama API URL
+        model_name: DeepSeek model name
+        max_retries: Maximum number of retries for API call
+        retry_delay: Delay between retries in seconds
     Returns:
-        回答文本或错误信息
+        Answer text or error message
     """
     try:
         detections = json.loads(json_detections)
@@ -165,8 +171,9 @@ def answer_question_with_deepseek(json_detections, question, ollama_api_url, mod
             )
         else:
             prompt = (
-                "You are an AI assistant that answers questions about an image based on structured detection data from a YOLO segmentation model. "
-                "The input data is provided in JSON format. The arguements of bounding box are [x_center, y_center, width, height]"
+                "You are an AI assistant that answers questions about an image based on structured detection data from a computer vision model. "
+                "'dominant_color_rgb' is the RGB color value [R, G, B] (0-255) of the dominant color in the object's mask. "
+                "The arguements of the bounding box 'bbox' are in the format [x_center, y_center, width, height]"
                 f"The image is {image_height} pixels high and {image_width} pixels wide. "
                 f"The image was captured at {capture_time}. "
                 f"Detected objects data:\n{json.dumps(detections, indent=2)}\n"
@@ -174,21 +181,24 @@ def answer_question_with_deepseek(json_detections, question, ollama_api_url, mod
                 f"Question: {question}"
             )
 
-        payload = {
-            "model": model_name,
-            "prompt": prompt,
-            "stream": False
-        }
-        response = requests.post(ollama_api_url, json=payload, timeout=60)
-        response.raise_for_status()
-        return response.json().get("response", "No answer generated.")
+        # Retry mechanism for API call
+        for attempt in range(max_retries):
+            try:
+                payload = {
+                    "model": model_name,
+                    "prompt": prompt,
+                    "stream": False
+                }
+                response = requests.post(ollama_api_url, json=payload, timeout=60)
+                response.raise_for_status()
+                return response.json().get("response", "No answer generated.")
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+                print(f"API attempt {attempt + 1}/{max_retries} failed: {str(e)}")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                continue
+        return f"Error: Failed to get response from Ollama API after {max_retries} attempts."
 
-    except requests.exceptions.ConnectionError:
-        return "Error: Unable to connect to Ollama API."
-    except requests.exceptions.Timeout:
-        return "Error: Ollama API request timed out."
-    except requests.exceptions.HTTPError as e:
-        return f"Error: HTTP error occurred: {str(e)}"
     except json.JSONDecodeError:
         return "Error: Invalid response format from Ollama API."
     except Exception as e:
@@ -196,22 +206,22 @@ def answer_question_with_deepseek(json_detections, question, ollama_api_url, mod
 
 def process_image_and_describe(image_bgr, yolo_model, model_name, ollama_api_url, capture_time=None):
     """
-    处理图像并返回检测结果和标注图像，供后续提问和直方图显示。
+    Process the image and return detection results and annotated image for subsequent questioning and histogram display.
     Args:
-        image_bgr: BGR格式的NumPy图像数组
-        yolo_model: 加载的YOLO分割模型
-        model_name: DeepSeek模型名称
-        ollama_api_url: Ollama API的URL
-        capture_time: 拍摄时间字符串（可选）
+        image_bgr: NumPy image array in BGR format
+        yolo_model: Loaded YOLO segmentation model
+        model_name: DeepSeek model name
+        ollama_api_url: Ollama API URL
+        capture_time: Capture time string (optional)
     Returns:
-        json_detections: 检测结果的JSON字符串（包含时间、掩码面积、直方图和RGB）
-        annotated_image: 标注后的图像（BGR格式）
+        json_detections: JSON string of detection results (including time, mask area, histogram, and RGB)
+        annotated_image: Annotated image (BGR format)
     """
     try:
-        # 进行目标检测和分割
+        # Perform object detection and segmentation
         detections_list, annotated_image = detect_objects_yolo(image_bgr, yolo_model)
 
-        # 格式化检测结果
+        # Format detection results
         json_detections = format_detections_as_json_for_llm(detections_list, image_bgr.shape, capture_time)
 
         return json_detections, annotated_image
