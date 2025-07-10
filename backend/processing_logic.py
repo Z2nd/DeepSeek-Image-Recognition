@@ -129,8 +129,8 @@ def format_detections_as_json_for_llm(detections_list, image_shape, capture_time
                 "confidence": detection["confidence"],
                 "bbox": detection["bbox"],
                 "dominant_color_rgb": detection["dominant_color_rgb"],
-                "mask_area": detection["mask_area"],
-                "color_histogram": detection["color_histogram"]
+                # "mask_area": detection["mask_area"],
+                # "color_histogram": detection["color_histogram"]
             })
         data = {
             "image_height": image_shape[0],
@@ -180,7 +180,6 @@ def answer_question_with_deepseek(json_detections, question, ollama_api_url, mod
                 "Based on this data, answer the following question in concise, natural language. "
                 f"Question: {question}"
             )
-
         # Retry mechanism for API call
         for attempt in range(max_retries):
             try:
