@@ -4,6 +4,7 @@ import json
 import sys
 from datetime import datetime
 from ultralytics import YOLO
+from picamera2 import Picamera2
 import backend.processing_logic as processing_logic
 
 class ImageProcessor:
@@ -31,42 +32,47 @@ class ImageProcessor:
             self.yolo_model = None
 
     def capture_image(self):
-        """
-        Capture an image from the webcam and save metadata.
-        Returns:
-            image_bgr: Captured image in BGR format
-            capture_time: Timestamp of capture
-        """
-        cap = cv2.VideoCapture(0)  # Default webcam
-        if not cap.isOpened():
-            print("Error: Unable to access the webcam.")
-            return None, None
-        
-        try:
-            # Capture a frame
-            ret, frame = cap.read()
-            if not ret:
-                print("Error: Failed to capture image from webcam.")
-                return None, None
-            
-            # Get timestamp
-            capture_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"Image captured at {capture_time}.")
-            
-            # Save image
-            cv2.imwrite(self.IMAGE_SAVE_PATH, frame)
-            print(f"Image saved to {self.IMAGE_SAVE_PATH}.")
-            
-            # Save metadata
-            metadata = {"capture_time": capture_time}
-            with open(self.METADATA_PATH, 'w') as f:
-                json.dump(metadata, f)
-            print(f"Metadata saved to {self.METADATA_PATH}.")
-            
-            return frame, capture_time
-        
-        finally:
-            cap.release()  # Release webcam
+      """
+      Capture an image from the Raspberry Pi camera using picamera2 and save metadata.
+      Returns:
+          image_bgr: Captured image in BGR format
+          capture_time: Timestamp of capture
+      """
+      try:
+          # Initialize Picamera2
+          picam2 = Picamera2()
+          # Configure for still capture (use RGB format, convert to BGR)
+          config = picam2.create_still_configuration(main={"size": (640, 480), "format": "RGB888"})
+          picam2.configure(config)
+          picam2.start()
+          
+          try:
+              # Capture image in BGR format
+              image_bgr = picam2.capture_array()
+              
+              # Get timestamp
+              capture_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+              print(f"Image captured at {capture_time}.")
+              
+              # Save image in BGR format
+              cv2.imwrite(self.IMAGE_SAVE_PATH, image_bgr)
+              print(f"Image saved to {self.IMAGE_SAVE_PATH}.")
+              
+              # Save metadata
+              metadata = {"capture_time": capture_time}
+              with open(self.METADATA_PATH, 'w') as f:
+                  json.dump(metadata, f)
+              print(f"Metadata saved to {self.METADATA_PATH}.")
+              
+              return image_bgr, capture_time
+          
+          finally:
+              picam2.stop()
+              picam2.close()
+      
+      except Exception as e:
+          print(f"Error capturing image with picamera2: {str(e)}")
+          return None, None
 
     def process_and_annotate(self, image_bgr, capture_time):
         """
@@ -108,37 +114,52 @@ class ImageProcessor:
             print("No annotated image available.")
 
     def question_loop(self, json_detections):
-        """
-        Handle user questions about the image, with retry mechanism for answers.
-        Args:
-            json_detections: JSON string of detection results
-        """
-        print(f"Image captured at: {json.loads(json_detections).get('capture_time', 'unknown')}")
-        print("Enter your questions about the image (type 'quit' to exit).")
-        
-        while True:
-            question = input("Question: ").strip()
-            sys.stdout.flush()
-            
-            if question.lower() == 'quit':
-                break
-            if not question:
-                print("Please enter a valid question.")
-                sys.stdout.flush()
-                continue
-            
-            print("Generating answer, please wait...")
-            sys.stdout.flush()
-            
-            answer = processing_logic.answer_question_with_deepseek(
-                json_detections,
-                question,
-                self.OLLAMA_API_URL,
-                self.DEEPSEEK_MODEL_NAME
-            )
-            print(f"Answer: {answer}")
-            sys.stdout.flush()
-            print()  # Add spacing for readability
+      """
+      Handle user questions about the image, display and log performance metrics.
+      Args:
+          json_detections: JSON string of detection results
+      """
+      performance_log = []
+      log_file = 'backend/resource/performance_log.json'
+      
+      print(f"Image captured at: {json.loads(json_detections).get('capture_time', 'unknown')}")
+      print("Enter your questions about the image (type 'quit' to exit).")
+      
+      while True:
+          question = input("Question: ").strip()
+          sys.stdout.flush()
+          
+          if question.lower() == 'quit':
+              # Save performance log
+              with open(log_file, 'w') as f:
+                  json.dump(performance_log, f, indent=2)
+              print(f"Performance metrics saved to {log_file}.")
+              break
+          if not question:
+              print("Please enter a valid question.")
+              sys.stdout.flush()
+              continue
+          
+          print("Generating answer, please wait...")
+          sys.stdout.flush()
+          
+          answer, metrics = processing_logic.answer_question_with_deepseek(
+              json_detections,
+              question,
+              self.OLLAMA_API_URL,
+              self.DEEPSEEK_MODEL_NAME
+          )
+          print(f"Answer: {answer}")
+          print(f"Performance: Inference Time={metrics['inference_time']:.2f}s, "
+                f"Memory={metrics['memory_mb']:.2f}MB, "
+                f"CPU={metrics['cpu_percent']:.1f}%, "
+                f"Retries={metrics['retry_attempts']}, "
+                f"Status={metrics['status']}")
+          sys.stdout.flush()
+          
+          # Append metrics to log
+          performance_log.append(metrics)
+          print()  # Add spacing for readability
 
     def run(self):
         """Main method to execute the image processing and questioning pipeline."""
@@ -152,7 +173,7 @@ class ImageProcessor:
         json_detections, annotated_image = self.process_and_annotate(image_bgr, capture_time)
         
         # Display annotated image
-        # self.display_annotated_image(annotated_image)
+        self.display_annotated_image(annotated_image)
         
         # Start question loop
         self.question_loop(json_detections)

@@ -5,6 +5,7 @@ import requests
 from ultralytics import YOLO
 from sklearn.cluster import KMeans
 import time
+import psutil
 
 def detect_objects_yolo(image_bgr, yolo_model):
     """
@@ -142,10 +143,10 @@ def format_detections_as_json_for_llm(detections_list, image_shape, capture_time
         data["capture_time"] = capture_time
     
     return json.dumps(data)
-
+        
 def answer_question_with_deepseek(json_detections, question, ollama_api_url, model_name, max_retries=3, retry_delay=2):
     """
-    Generate answers using DeepSeek based on detection results, mask area, histogram, dominant color RGB, capture time, and user question.
+    Generate answers using DeepSeek and collect performance metrics (inference time, memory, CPU usage).
     Args:
         json_detections: JSON string of detection results
         question: User input question
@@ -154,9 +155,23 @@ def answer_question_with_deepseek(json_detections, question, ollama_api_url, mod
         max_retries: Maximum number of retries for API call
         retry_delay: Delay between retries in seconds
     Returns:
-        Answer text or error message
+        tuple: (answer text or error message, performance metrics dictionary)
     """
     try:
+        # Initialize performance metrics
+        metrics = {
+            "question": question,
+            "start_time": time.time(),
+            "inference_time": 0.0,
+            "memory_mb": 0.0,
+            "cpu_percent": 0.0,
+            "retry_attempts": 0,
+            "status": "success"
+        }
+        
+        # Get process for memory and CPU monitoring
+        process = psutil.Process()
+        
         detections = json.loads(json_detections)
         image_height = detections["image_height"]
         image_width = detections["image_width"]
@@ -180,28 +195,41 @@ def answer_question_with_deepseek(json_detections, question, ollama_api_url, mod
                 "Based on this data, answer the following question in concise, natural language. "
                 f"Question: {question}"
             )
+
         # Retry mechanism for API call
         for attempt in range(max_retries):
             try:
+                start_time = time.time()
                 payload = {
                     "model": model_name,
                     "prompt": prompt,
                     "stream": False
                 }
-                response = requests.post(ollama_api_url, json=payload, timeout=60)
+                response = requests.post(ollama_api_url, json=payload, timeout=1200)
                 response.raise_for_status()
-                return response.json().get("response", "No answer generated.")
+                metrics["inference_time"] = time.time() - start_time
+                metrics["memory_mb"] = process.memory_info().rss / 1024 / 1024  # Convert to MB
+                metrics["cpu_percent"] = process.cpu_percent(interval=None)
+                metrics["retry_attempts"] = attempt
+                return response.json().get("response", "No answer generated."), metrics
             except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+                metrics["retry_attempts"] = attempt + 1
                 print(f"API attempt {attempt + 1}/{max_retries} failed: {str(e)}")
                 if attempt < max_retries - 1:
                     time.sleep(retry_delay)
                 continue
-        return f"Error: Failed to get response from Ollama API after {max_retries} attempts."
+        metrics["status"] = "failed"
+        metrics["error"] = "Failed to get response from Ollama API"
+        return f"Error: Failed to get response from Ollama API after {max_retries} attempts.", metrics
 
     except json.JSONDecodeError:
-        return "Error: Invalid response format from Ollama API."
+        metrics["status"] = "failed"
+        metrics["error"] = "Invalid response format from Ollama API"
+        return "Error: Invalid response format from Ollama API.", metrics
     except Exception as e:
-        return f"Error in answering question: {str(e)}"
+        metrics["status"] = "failed"
+        metrics["error"] = str(e)
+        return f"Error in answering question: {str(e)}", metrics
 
 def process_image_and_describe(image_bgr, yolo_model, model_name, ollama_api_url, capture_time=None):
     """
