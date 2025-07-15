@@ -1,18 +1,9 @@
 [
   {
     "question": "what did you see",
-    "start_time": 1752486827.9252846,
-    "inference_time": 412.0336649417877,
-    "memory_mb": 614.078125,
-    "cpu_percent": 0.0,
-    "retry_attempts": 0,
-    "status": "success"
-  },
-  {
-    "question": "what color this person is",
-    "start_time": 1752487472.8120399,
-    "inference_time": 229.51105070114136,
-    "memory_mb": 614.078125,
+    "start_time": 1752586440.782657,
+    "inference_time": 441.59804105758667,
+    "memory_mb": 640.5,
     "cpu_percent": 0.0,
     "retry_attempts": 0,
     "status": "success"

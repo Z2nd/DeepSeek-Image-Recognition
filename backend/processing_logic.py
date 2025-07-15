@@ -6,6 +6,7 @@ from ultralytics import YOLO
 from sklearn.cluster import KMeans
 import time
 import psutil
+import re
 
 def detect_objects_yolo(image_bgr, yolo_model):
     """
@@ -207,11 +208,17 @@ def answer_question_with_deepseek(json_detections, question, ollama_api_url, mod
                 }
                 response = requests.post(ollama_api_url, json=payload, timeout=1200)
                 response.raise_for_status()
+                complete_response = response.json().get("response", "No answer generated.")
+
+                # Extract final answer (remove <think>...</think> tags)
+                final_answer = re.sub(r'<think>.*?</think>', '', complete_response, flags=re.DOTALL).strip()
+                if not final_answer:
+                    final_answer = complete_response  # Fallback if no content outside <think> tags
+                
                 metrics["inference_time"] = time.time() - start_time
                 metrics["memory_mb"] = process.memory_info().rss / 1024 / 1024  # Convert to MB
-                metrics["cpu_percent"] = process.cpu_percent(interval=None)
                 metrics["retry_attempts"] = attempt
-                return response.json().get("response", "No answer generated."), metrics
+                return final_answer, complete_response, metrics
             except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
                 metrics["retry_attempts"] = attempt + 1
                 print(f"API attempt {attempt + 1}/{max_retries} failed: {str(e)}")
@@ -220,16 +227,16 @@ def answer_question_with_deepseek(json_detections, question, ollama_api_url, mod
                 continue
         metrics["status"] = "failed"
         metrics["error"] = "Failed to get response from Ollama API"
-        return f"Error: Failed to get response from Ollama API after {max_retries} attempts.", metrics
+        return "Error: Failed to get response from Ollama API after {max_retries} attempts.", "", metrics
 
     except json.JSONDecodeError:
         metrics["status"] = "failed"
         metrics["error"] = "Invalid response format from Ollama API"
-        return "Error: Invalid response format from Ollama API.", metrics
+        return "Error: Invalid response format from Ollama API.", "", metrics
     except Exception as e:
         metrics["status"] = "failed"
         metrics["error"] = str(e)
-        return f"Error in answering question: {str(e)}", metrics
+        return f"Error in answering question: {str(e)}", "", metrics
 
 def process_image_and_describe(image_bgr, yolo_model, model_name, ollama_api_url, capture_time=None):
     """

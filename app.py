@@ -114,52 +114,55 @@ class ImageProcessor:
             print("No annotated image available.")
 
     def question_loop(self, json_detections):
-      """
-      Handle user questions about the image, display and log performance metrics.
-      Args:
-          json_detections: JSON string of detection results
-      """
-      performance_log = []
-      log_file = 'backend/resource/performance_log.json'
-      
-      print(f"Image captured at: {json.loads(json_detections).get('capture_time', 'unknown')}")
-      print("Enter your questions about the image (type 'quit' to exit).")
-      
-      while True:
-          question = input("Question: ").strip()
-          sys.stdout.flush()
+        """
+        Handle user questions about the image, display and log performance metrics.
+        Args:
+            json_detections: JSON string of detection results
+        """
+        response_log = []
+        log_file = 'backend/resource/response_log.json'
+        
+        print(f"Image captured at: {json.loads(json_detections).get('capture_time', 'unknown')}")
+        print("Enter your questions about the image (type 'quit' to exit).")
+        
+        while True:
+            question = input("Question: ").strip()
+            sys.stdout.flush()
+            
+            if question.lower() == 'quit':
+                # Save performance log
+                with open(log_file, 'w') as f:
+                    json.dump(response_log, f, indent=2)
+                print(f"Performance metrics saved to {log_file}.")
+                break
+            if not question:
+                print("Please enter a valid question.")
+                sys.stdout.flush()
+                continue
+            
+            print("Generating answer, please wait...")
+            sys.stdout.flush()
+            
+            final_answer, complete_response, metrics = processing_logic.answer_question_with_deepseek(
+                json_detections,
+                question,
+                self.OLLAMA_API_URL,
+                self.DEEPSEEK_MODEL_NAME
+            )
+            print(f"Answer: {final_answer}")
+            print(f"Performance: Inference Time={metrics['inference_time']:.2f}s, "
+                    f"Memory={metrics['memory_mb']:.2f}MB, "
+                    f"Retries={metrics['retry_attempts']}, "
+                    f"Status={metrics['status']}")
+            sys.stdout.flush()
           
-          if question.lower() == 'quit':
-              # Save performance log
-              with open(log_file, 'w') as f:
-                  json.dump(performance_log, f, indent=2)
-              print(f"Performance metrics saved to {log_file}.")
-              break
-          if not question:
-              print("Please enter a valid question.")
-              sys.stdout.flush()
-              continue
-          
-          print("Generating answer, please wait...")
-          sys.stdout.flush()
-          
-          answer, metrics = processing_logic.answer_question_with_deepseek(
-              json_detections,
-              question,
-              self.OLLAMA_API_URL,
-              self.DEEPSEEK_MODEL_NAME
-          )
-          print(f"Answer: {answer}")
-          print(f"Performance: Inference Time={metrics['inference_time']:.2f}s, "
-                f"Memory={metrics['memory_mb']:.2f}MB, "
-                f"CPU={metrics['cpu_percent']:.1f}%, "
-                f"Retries={metrics['retry_attempts']}, "
-                f"Status={metrics['status']}")
-          sys.stdout.flush()
-          
-          # Append metrics to log
-          performance_log.append(metrics)
-          print()  # Add spacing for readability
+            # Append metrics to log
+            response_log.append({
+                "question": question,
+                "answer": complete_response,
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "performance": metrics})
+            print()  # Add spacing for readability
 
     def run(self):
         """Main method to execute the image processing and questioning pipeline."""
