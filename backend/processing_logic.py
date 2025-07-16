@@ -8,22 +8,78 @@ import time
 import psutil
 import re
 
-def detect_objects_yolo(image_bgr, yolo_model):
+def get_dominant_color(image, mask=None, color_space='HSV', n_clusters=1):
     """
-    Perform instance segmentation using the YOLO model, extracting class, confidence, bounding box, mask area, color histogram, and dominant color RGB via K-Means.
+    Extract dominant color from an image region using K-Means in specified color space.
+    Args:
+        image: BGR image (NumPy array)
+        mask: Binary mask (optional, same size as image)
+        color_space: 'HSV' or 'HSL' (default: 'HSV')
+        n_clusters: Number of clusters for K-Means (default: 1)
+    Returns:
+        dominant_color: List of [H, S, V] or [H, S, L] values
+        color_name: Approximate color name (e.g., 'red', 'blue')
+    """
+    # Color name mapping for Hue (simplified, adjust as needed)
+    color_names = {
+        (0, 15): 'red', (15, 45): 'orange', (45, 75): 'yellow',
+        (75, 165): 'green', (165, 195): 'cyan', (195, 255): 'blue',
+        (255, 345): 'purple', (345, 360): 'red'
+    }
+
+    # Extract region of interest (ROI)
+    roi = image[mask > 0] if mask is not None else image.reshape(-1, 3)
+    if len(roi) == 0:
+        return [0, 0, 0], 'unknown'
+
+    # Convert to specified color space
+    if color_space == 'HSV':
+        roi_converted = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)[mask > 0] if mask is not None else cv2.cvtColor(image, cv2.COLOR_BGR2HSV).reshape(-1, 3)
+    elif color_space == 'HSL':
+        roi_converted = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)[mask > 0] if mask is not None else cv2.cvtColor(image, cv2.COLOR_BGR2HLS).reshape(-1, 3)
+    else:
+        raise ValueError("Unsupported color space. Use 'HSV' or 'HSL'.")
+
+    # Apply K-Means clustering
+    kmeans = KMeans(n_clusters=n_clusters, random_state=0, n_init=10)
+    kmeans.fit(roi_converted)
+    dominant_color = kmeans.cluster_centers_[0].astype(float).tolist()  # [H, S, V] or [H, S, L]
+
+    # Normalize Hue to 0-360 for HSV/HSL (OpenCV uses 0-180)
+    dominant_color[0] *= 2  # Convert OpenCV Hue (0-180) to 0-360
+
+    # Determine approximate color name based on Hue
+    hue = dominant_color[0]
+    color_name = 'unknown'
+    for (h_min, h_max), name in color_names.items():
+        if h_min <= hue <= h_max:
+            color_name = name
+            break
+
+    # Adjust saturation and value/lightness for meaningful color name
+    if color_space == 'HSV' and (dominant_color[1] < 0.2 or dominant_color[2] < 0.2):
+        color_name = 'gray' if dominant_color[2] < 0.5 else 'white'
+    elif color_space == 'HSL' and (dominant_color[1] < 0.2 or abs(dominant_color[2] - 0.5) > 0.4):
+        color_name = 'gray' if dominant_color[2] < 0.5 else 'white'
+
+    return dominant_color, color_name
+
+def detect_objects_yolo(image_bgr, yolo_model, color_space='HSV'):
+    """
+    Modified YOLO detection with HSV/HSL color analysis.
     Args:
         image_bgr: NumPy image array in BGR format
         yolo_model: Loaded YOLO segmentation model
+        color_space: 'HSV' or 'HSL' (default: 'HSV')
     Returns:
-        detections_list: List of detection results, including class, confidence, bounding box, mask area, histogram, and dominant color RGB
-        annotated_image: Annotated image (BGR format, with bounding boxes, mask contours, and dominant color)
+        detections_list: List of detection results with dominant color and color name
+        annotated_image: Annotated image with bounding boxes and labels
     """
     try:
         if yolo_model is None:
             print("Error: YOLO model is not loaded.")
             return [], image_bgr
 
-        # Perform object detection and segmentation
         results = yolo_model(image_bgr)
         detections_list = []
         annotated_image = image_bgr.copy()
@@ -34,68 +90,42 @@ def detect_objects_yolo(image_bgr, yolo_model):
             masks = result.masks if hasattr(result, 'masks') and result.masks is not None else None
 
             for idx, box in enumerate(boxes):
-                # Extract bounding box coordinates, class, and confidence
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
                 conf = float(box.conf)
                 cls = int(box.cls)
                 class_name = yolo_model.names[cls]
 
-                # Extract mask (if available)
                 mask_area = 0.0
                 mask = None
                 if masks is not None and idx < len(masks):
-                    mask = masks.data[idx].cpu().numpy() # Mask as boolean array
-                    # Resize mask to match input image dimensions
+                    mask = masks.data[idx].cpu().numpy()
                     mask = cv2.resize(mask.astype(np.uint8), (img_width, img_height), interpolation=cv2.INTER_NEAREST)
-                    mask_area = np.sum(mask) / (image_bgr.shape[0] * image_bgr.shape[1])  # Area proportion
-                    # Draw mask contours
+                    mask_area = np.sum(mask) / (img_width * img_height)
                     contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                     cv2.drawContours(annotated_image, contours, -1, (255, 0, 0), 2)
 
-                # Extract mask or bounding box region
                 roi = image_bgr * mask[..., None] if mask is not None else image_bgr[y1:y2, x1:x2]
                 if roi.size == 0:
                     continue
 
-                # Compute color histogram (RGB, 8 bins/channel)
-                hist_r = cv2.calcHist([roi], [2], mask.astype(np.uint8) if mask is not None else None, [8], [0, 256])
-                hist_g = cv2.calcHist([roi], [1], mask.astype(np.uint8) if mask is not None else None, [8], [0, 256])
-                hist_b = cv2.calcHist([roi], [0], mask.astype(np.uint8) if mask is not None else None, [8], [0, 256])
-                # Normalize histogram
-                hist_r = hist_r.flatten().tolist()
-                hist_g = hist_g.flatten().tolist()
-                hist_b = hist_b.flatten().tolist()
-                hist_sum = sum(hist_r) + sum(hist_g) + sum(hist_b)
-                if hist_sum > 0:
-                    hist_r = [x / hist_sum for x in hist_r]
-                    hist_g = [x / hist_sum for x in hist_g]
-                    hist_b = [x / hist_sum for x in hist_b]
+                # Compute color histogram (optional, omitted for simplicity)
+                # hist_r = cv2.calcHist([roi], [2], mask.astype(np.uint8) if mask is not None else None, [8], [0, 256])
+                # ...
 
-                # Extract dominant color using K-Means (RGB)
-                pixels = roi[mask > 0] if mask is not None else roi.reshape(-1, 3)
-                if len(pixels) > 0:
-                    kmeans = KMeans(n_clusters=1, random_state=0, n_init=10)
-                    kmeans.fit(pixels)
-                    dominant_color_rgb = kmeans.cluster_centers_[0].astype(int).tolist()  # [R, G, B]
-                else:
-                    dominant_color_rgb = [0, 0, 0]  # Default value
+                # Get dominant color in HSV or HSL
+                dominant_color, color_name = get_dominant_color(roi, mask, color_space=color_space)
 
-                # Add to detection results
                 detections_list.append({
                     "class": class_name,
                     "confidence": conf,
                     "bbox": [x1, y1, x2, y2],
-                    "dominant_color_rgb": dominant_color_rgb,
-                    "mask_area": float(mask_area),
-                    "color_histogram": {
-                        "r": hist_r,
-                        "g": hist_g,
-                        "b": hist_b
-                    }
+                    "dominant_color": dominant_color,
+                    "color_name": color_name,
+                    "mask_area": float(mask_area)
                 })
 
-                # Draw bounding box and label (including RGB value)
-                label = f"{class_name} (RGB: {dominant_color_rgb}) {conf:.2f}"
+                # Draw bounding box and label
+                label = f"{class_name} ({color_name}) {conf:.2f}"
                 cv2.rectangle(annotated_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 cv2.putText(annotated_image, label, (x1, y1 - 10),
                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
@@ -130,8 +160,9 @@ def format_detections_as_json_for_llm(detections_list, image_shape, capture_time
                 "class": detection["class"],
                 "confidence": detection["confidence"],
                 "bbox": detection["bbox"],
-                "dominant_color_rgb": detection["dominant_color_rgb"],
-                # "mask_area": detection["mask_area"],
+                "dominant_color": detection["dominant_color"],
+                "color_name": detection["color_name"],
+                "mask_area": detection["mask_area"],
                 # "color_histogram": detection["color_histogram"]
             })
         data = {
