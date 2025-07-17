@@ -161,7 +161,8 @@ class ImageProcessor:
                 "question": question,
                 "answer": complete_response,
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "performance": metrics})
+                "performance": metrics,
+                "detections": json.loads(json_detections)})
             print()  # Add spacing for readability
 
     def run(self):

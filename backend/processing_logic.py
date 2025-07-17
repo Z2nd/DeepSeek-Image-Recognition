@@ -137,43 +137,23 @@ def detect_objects_yolo(image_bgr, yolo_model, color_space='HSV'):
         return [], image_bgr
 
 def format_detections_as_json_for_llm(detections_list, image_shape, capture_time=None):
-    """
-    Format detection results into a JSON string, including dominant color RGB, mask area, histogram, and capture time.
-    Args:
-        detections_list: List of detection results
-        image_shape: Image dimensions (height, width, channels)
-        capture_time: Capture time string (optional)
-    Returns:
-        JSON string
-    """
-    if not detections_list:
-        data = {
-            "image_height": image_shape[0],
-            "image_width": image_shape[1],
-            "detections": [],
-            "message": "No objects detected in the image."
-        }
-    else:
-        formatted_detections = []
-        for detection in detections_list:
-            formatted_detections.append({
-                "class": detection["class"],
-                "confidence": detection["confidence"],
-                "bbox": detection["bbox"],
-                "dominant_color": detection["dominant_color"],
-                "color_name": detection["color_name"],
-                "mask_area": detection["mask_area"],
-                # "color_histogram": detection["color_histogram"]
-            })
-        data = {
-            "image_height": image_shape[0],
-            "image_width": image_shape[1],
-            "detections": formatted_detections
-        }
-    
+    formatted_detections = []
+    for detection in detections_list:
+        formatted_detections.append({
+            "class": detection["class"],
+            "confidence": detection["confidence"],
+            "bbox": detection["bbox"],
+            "dominant_color": detection["dominant_color"],
+            "color_name": detection["color_name"],
+            "mask_area": detection["mask_area"]
+        })
+    data = {
+        "image_height": image_shape[0],
+        "image_width": image_shape[1],
+        "detections": formatted_detections
+    }
     if capture_time:
         data["capture_time"] = capture_time
-    
     return json.dumps(data)
         
 def answer_question_with_deepseek(json_detections, question, ollama_api_url, model_name, max_retries=3, retry_delay=2):
@@ -218,13 +198,11 @@ def answer_question_with_deepseek(json_detections, question, ollama_api_url, mod
             )
         else:
             prompt = (
-                "You are an AI assistant that answers questions about an image based on structured detection data from a computer vision model. "
-                "'dominant_color_rgb' is the RGB color value [R, G, B] (0-255) of the dominant color in the object's mask. "
-                "The arguements of the bounding box 'bbox' are in the format [x_center, y_center, width, height]"
-                f"The image is {image_height} pixels high and {image_width} pixels wide. "
-                f"The image was captured at {capture_time}. "
-                f"Detected objects data:\n{json.dumps(detections, indent=2)}\n"
-                "Based on this data, answer the following question in concise, natural language. "
+                "You are an AI assistant that answers questions about an image based on structured detection data. "
+                "The image is {image_height} pixels high and {image_width} pixels wide, captured at {capture_time}. "
+                "Detected objects data (bbox: [x1, y1, x2, y2], dominant_color: [{color_space} values], color_name: common name):"
+                f"\n{json.dumps(detections, indent=2)}\n"
+                "Answer the following question in concise, natural language:\n"
                 f"Question: {question}"
             )
 
