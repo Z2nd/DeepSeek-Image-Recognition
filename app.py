@@ -13,11 +13,11 @@ class ImageProcessor:
     """
     def __init__(self):
         """Initialize configurations and load YOLO model."""
-        self.YOLO_MODEL_PATH = 'backend/resource/yolov8n-seg.pt'
+        self.YOLO_MODEL_PATH = 'backend/resource/models/yolov8n-seg.pt'
         self.OLLAMA_API_URL = 'http://localhost:11434/api/generate'
         self.DEEPSEEK_MODEL_NAME = 'deepseek-r1:8b'
-        self.METADATA_PATH = 'backend/resource/capture_metadata.json'
-        self.IMAGE_SAVE_PATH = 'backend/resource/captured_image.jpg'
+        self.METADATA_PATH = 'backend/data/capture_metadata.json'
+        self.IMAGE_SAVE_PATH = 'backend/data/captured_image.jpg'
         
         # Create resource directory
         os.makedirs('backend/resource', exist_ok=True)
