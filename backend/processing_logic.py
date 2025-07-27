@@ -296,50 +296,60 @@ def answer_question_with_deepseek(json_detections, question, ollama_api_url, mod
     Returns:
         tuple: (answer text, complete response, performance metrics dictionary)
     """
-    try:
-        metrics = {
-            "question": question,
-            "start_time": time.time(),
-            "inference_time": 0.0,
-            "memory_mb": 0.0,
-            "cpu_percent": 0.0,
-            "retry_attempts": 0,
-            "status": "success"
-        }
-        
-        process = psutil.Process()
-        
-        detections = json.loads(json_detections)
-        image_height = detections["image_height"]
-        image_width = detections["image_width"]
-        capture_time = detections.get("capture_time", "unknown")
+    metrics = {
+        "question": question,
+        "start_time": time.time(),
+        "inference_time": 0.0,
+        "memory_mb": 0.0,
+        "cpu_percent": 0.0,
+        "retry_attempts": 0,
+        "status": "pending"
+    }
+    process = psutil.Process()
 
-        if not detections["detections"]:
+    try:
+        detections_data = json.loads(json_detections)
+
+        # --- 关键改动：判断是单图JSON还是序列JSON ---
+        if "frames" in detections_data:
+            # 新逻辑：处理帧序列
             prompt = (
-                f"The image is {image_height} pixels high and {image_width} pixels wide. "
-                f"No objects were detected. The image was captured at {capture_time}. "
-                f"Please answer the following question based on this information:\n"
+                "You are an AI assistant analyzing a sequence of image frames. "
+                "Analyze the objects and their changes over time based on the following structured data. "
+                "Each item in the 'frames' list represents one frame with a frame_id and its detected objects.\n"
+                f"Data: {json.dumps(detections_data, indent=2)}\n\n"
+                "Please answer the following user question in concise, natural language:\n"
                 f"Question: {question}"
             )
         else:
-            prompt = (
-                "You are an AI assistant that answers questions about an image based on structured detection data. "
-                "The image is {image_height} pixels high and {image_width} pixels wide, captured at {capture_time}. "
-                "Detected objects data (bbox: [x1, y1, x2, y2], dominant_color: [H, S, V], color_name: common name, "
-                "group: category group, sub_class: fine-grained class):\n"
-                f"{json.dumps(detections, indent=2)}\n"
-                "Answer the following question in concise, natural language:\n"
-                f"Question: {question}"
-            )
+            # 旧逻辑：处理单张图片
+            image_height = detections_data.get("image_height", "unknown")
+            image_width = detections_data.get("image_width", "unknown")
+            capture_time = detections_data.get("capture_time", "unknown")
 
+            if not detections_data.get("detections"):
+                prompt = (
+                    f"The image is {image_height} pixels high and {image_width} pixels wide. "
+                    f"No objects were detected. The image was captured at {capture_time}. "
+                    f"Please answer the following question based on this information:\n"
+                    f"Question: {question}"
+                )
+            else:
+                prompt = (
+                    "You are an AI assistant that answers questions about an image based on structured detection data. "
+                    f"The image is {image_height} pixels high and {image_width} pixels wide, captured at {capture_time}. "
+                    "Detected objects data (bbox: [x1, y1, x2, y2], dominant_color: [H, S, V], color_name: common name, "
+                    "group: category group, sub_class: fine-grained class):\n"
+                    f"{json.dumps(detections_data, indent=2)}\n"
+                    "Answer the following question in concise, natural language:\n"
+                    f"Question: {question}"
+                )
+
+        # API调用部分保持不变
         for attempt in range(max_retries):
             try:
                 start_time = time.time()
-                payload = {
-                    "model": model_name,
-                    "prompt": prompt,
-                    "stream": False
-                }
+                payload = {"model": model_name, "prompt": prompt, "stream": False}
                 response = requests.post(ollama_api_url, json=payload, timeout=1200)
                 response.raise_for_status()
                 complete_response = response.json().get("response", "No answer generated.")
@@ -351,6 +361,7 @@ def answer_question_with_deepseek(json_detections, question, ollama_api_url, mod
                 metrics["inference_time"] = time.time() - start_time
                 metrics["memory_mb"] = process.memory_info().rss / 1024 / 1024
                 metrics["retry_attempts"] = attempt
+                metrics["status"] = "success"
                 return final_answer, complete_response, metrics
             except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
                 metrics["retry_attempts"] = attempt + 1
@@ -358,14 +369,11 @@ def answer_question_with_deepseek(json_detections, question, ollama_api_url, mod
                 if attempt < max_retries - 1:
                     time.sleep(retry_delay)
                 continue
+        
         metrics["status"] = "failed"
-        metrics["error"] = "Failed to get response from Ollama API"
-        return "Error: Failed to get response from Ollama API after {max_retries} attempts.", "", metrics
+        metrics["error"] = f"Failed to get response from Ollama API after {max_retries} attempts."
+        return metrics["error"], "", metrics
 
-    except json.JSONDecodeError:
-        metrics["status"] = "failed"
-        metrics["error"] = "Invalid response format from Ollama API"
-        return "Error: Invalid response format from Ollama API.", "", metrics
     except Exception as e:
         metrics["status"] = "failed"
         metrics["error"] = str(e)
@@ -392,3 +400,46 @@ def process_image_and_describe(image_bgr, yolo_model, model_name, ollama_api_url
     except Exception as e:
         print(f"Error in processing: {str(e)}")
         return json.dumps({"message": f"Processing failed: {str(e)}"}), image_bgr
+    
+def format_sequence_detections_for_llm(sequence_detections, capture_times):
+    """
+    将帧序列的检测结果格式化为单个JSON字符串，用于LLM。
+
+    Args:
+        sequence_detections: 检测结果的列表，每个元素是单帧的detections_list。
+        capture_times: 捕获时间的列表，与sequence_detections对应。
+
+    Returns:
+        JSON string
+    """
+    formatted_frames = []
+    for i, detections_list in enumerate(sequence_detections):
+        if not detections_list:
+            formatted_detections = []
+        else:
+            formatted_detections = [
+                {
+                    "class": detection["class"],
+                    "group": detection["group"],
+                    "confidence": detection["confidence"],
+                    "bbox": detection["bbox"],
+                    "color_name": detection["color_name"],
+                    "mask_area": detection["mask_area"],
+                    "sub_class": detection["sub_class"],
+                } for detection in detections_list
+            ]
+        
+        frame_data = {
+            "frame_id": i + 1,
+            "capture_time": capture_times[i],
+            "detections": formatted_detections
+        }
+        formatted_frames.append(frame_data)
+    
+    # 调整给LLM的提示，告知它正在处理一个序列
+    final_data = {
+        "summary": "This is a sequence of image frames. Analyze the objects and their changes over time.",
+        "frames": formatted_frames
+    }
+    
+    return json.dumps(final_data, indent=2)
