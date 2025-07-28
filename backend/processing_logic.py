@@ -10,7 +10,7 @@ import re
 import torch
 from torchvision import models, transforms
 
-# 定义 COCO80 类别分组
+# Definition COCO80 Category Grouping
 CATEGORY_GROUPS = {
     'person': [0],  # person
     'animal': [14, 16, 17, 18, 19, 20, 21, 22, 23, 24, 41, 44],  # bird, dog, cat, horse, sheep, cow, elephant, bear, zebra, giraffe, fish, snake
@@ -18,13 +18,13 @@ CATEGORY_GROUPS = {
     'other': [i for i in range(80) if i not in [14, 16, 17, 18, 19, 20, 21, 22, 23, 24, 41, 44, 2, 3, 4, 5, 6, 7, 8, 9]]
 }
 
-# 动物子类别映射（示例，需根据数据集调整）
+# Animal subcategory mapping (example, to be adapted to the dataset)
 ANIMAL_SUBCLASSES = {
     'dog': ['golden retriever', 'labrador', 'husky', 'bulldog'],
     'cat': ['persian', 'siamese', 'maine coon']
 }
 
-# 交通工具子类别映射（示例，需根据数据集调整）
+# Transportation subcategory mapping (example, to be adapted to the dataset)
 VEHICLE_SUBCLASSES = {
     'car': ['sedan', 'suv', 'pickup'],
     'bus': ['city bus', 'school bus']
@@ -158,7 +158,7 @@ def get_dominant_color(image, mask=None, color_space='HSV', n_clusters=1):
 
     return dominant_color, color_name
 
-def detect_objects_yolo(image_bgr, yolo_model, secondary_model=None, color_space='HSV'):
+def detect_objects_yolo(image_bgr, yolo_model, secondary_model=None, color_space='HSV', motion_mask=None):
     """
     Perform instance segmentation using YOLO model with grouping and secondary classification.
     Args:
@@ -207,6 +207,19 @@ def detect_objects_yolo(image_bgr, yolo_model, secondary_model=None, color_space
                 if roi.size == 0:
                     continue
 
+                # --- Determining whether an object is in motion ---
+                is_moving = False
+                if motion_mask is not None and mask is not None:
+                    # Compute the intersection of the object mask and the motion mask
+                    intersection = cv2.bitwise_and(mask, motion_mask)
+                    intersection_area = np.sum(intersection > 0)
+                    object_area = np.sum(mask > 0)
+                    
+                    # If the proportion of the intersection area to the total area of the object exceeds a threshold (e.g., 20%), 
+                    # the object is considered to be in motion
+                    if object_area > 0 and (intersection_area / object_area) > 0.2:
+                        is_moving = True
+
                 # Get dominant color
                 dominant_color, color_name = get_dominant_color(roi, mask, color_space=color_space)
 
@@ -222,11 +235,12 @@ def detect_objects_yolo(image_bgr, yolo_model, secondary_model=None, color_space
                     "group": group,
                     "confidence": conf,
                     "bbox": [x1, y1, x2, y2],
-                    "dominant_color": dominant_color,
-                    "color_name": color_name,
-                    "mask_area": float(mask_area),
-                    "sub_class": sub_class,
-                    "sub_confidence": sub_conf
+                    "dominant_color": dominant_color, 
+                    "color_name": color_name,         
+                    "mask_area": float(np.sum(mask > 0) / (img_width * img_height)) if mask is not None else 0.0,
+                    "sub_class": sub_class,           
+                    "sub_confidence": sub_conf,       
+                    "is_moving": is_moving            
                 })
 
                 # Draw bounding box and label
@@ -301,7 +315,6 @@ def answer_question_with_deepseek(json_detections, question, ollama_api_url, mod
         "start_time": time.time(),
         "inference_time": 0.0,
         "memory_mb": 0.0,
-        "cpu_percent": 0.0,
         "retry_attempts": 0,
         "status": "pending"
     }
@@ -310,19 +323,19 @@ def answer_question_with_deepseek(json_detections, question, ollama_api_url, mod
     try:
         detections_data = json.loads(json_detections)
 
-        # --- 关键改动：判断是单图JSON还是序列JSON ---
+        # --- Determine if it's a single graph JSON or a sequence JSON ---
         if "frames" in detections_data:
-            # 新逻辑：处理帧序列
+            # Processing Frame Sequences
             prompt = (
                 "You are an AI assistant analyzing a sequence of image frames. "
                 "Analyze the objects and their changes over time based on the following structured data. "
                 "Each item in the 'frames' list represents one frame with a frame_id and its detected objects.\n"
                 f"Data: {json.dumps(detections_data, indent=2)}\n\n"
-                "Please answer the following user question in concise, natural language:\n"
+                "Please answer the following user question in concise, natural descriptive language, one sentence:\n"
                 f"Question: {question}"
             )
         else:
-            # 旧逻辑：处理单张图片
+            # Processing Single Graph
             image_height = detections_data.get("image_height", "unknown")
             image_width = detections_data.get("image_width", "unknown")
             capture_time = detections_data.get("capture_time", "unknown")
@@ -345,7 +358,7 @@ def answer_question_with_deepseek(json_detections, question, ollama_api_url, mod
                     f"Question: {question}"
                 )
 
-        # API调用部分保持不变
+        # API Calls
         for attempt in range(max_retries):
             try:
                 start_time = time.time()
@@ -403,11 +416,11 @@ def process_image_and_describe(image_bgr, yolo_model, model_name, ollama_api_url
     
 def format_sequence_detections_for_llm(sequence_detections, capture_times):
     """
-    将帧序列的检测结果格式化为单个JSON字符串，用于LLM。
+    Format the detection results of the frame sequence into a single JSON string for LLM.
 
     Args:
-        sequence_detections: 检测结果的列表，每个元素是单帧的detections_list。
-        capture_times: 捕获时间的列表，与sequence_detections对应。
+        sequence_detections: A list of detection results, where each element is a single-frame detections_list.
+        capture_times: A list of capture times, corresponding to sequence_detections.
 
     Returns:
         JSON string
@@ -423,9 +436,10 @@ def format_sequence_detections_for_llm(sequence_detections, capture_times):
                     "group": detection["group"],
                     "confidence": detection["confidence"],
                     "bbox": detection["bbox"],
-                    "color_name": detection["color_name"],
-                    "mask_area": detection["mask_area"],
-                    "sub_class": detection["sub_class"],
+                    "color_name": detection.get("color_name", "unknown"),
+                    "mask_area": detection.get("mask_area", 0.0),
+                    "sub_class": detection.get("sub_class", "unknown"),
+                    "is_moving": detection.get("is_moving", False) 
                 } for detection in detections_list
             ]
         
@@ -436,10 +450,45 @@ def format_sequence_detections_for_llm(sequence_detections, capture_times):
         }
         formatted_frames.append(frame_data)
     
-    # 调整给LLM的提示，告知它正在处理一个序列
+    # Adjust the prompt to the LLM to inform it that it is processing a sequence
     final_data = {
         "summary": "This is a sequence of image frames. Analyze the objects and their changes over time.",
         "frames": formatted_frames
     }
     
     return json.dumps(final_data, indent=2)
+
+def detect_motion_with_optical_flow(prev_frame_gray, current_frame_gray, threshold=2.0):
+    """
+    The dense optical flow between two frames is computed using the Farneback algorithm and a motion mask is returned.
+
+    Args:
+        prev_frame_gray (numpy.ndarray): The grayscale image of the previous frame.
+        current_frame_gray (numpy.ndarray): The grayscale image of the current frame.
+        threshold (float): Threshold for the motion amplitude to determine if the pixel is moving.
+
+    Returns:
+        numpy.ndarray: A binarized motion mask with a white (255) motion region.
+    """
+    # Compute dense optical flow
+    flow = cv2.calcOpticalFlowFarneback(
+        prev_frame_gray, 
+        current_frame_gray, 
+        None, 
+        0.5,  # pyr_scale: Pyramid scaling
+        3,    # levels: Pyramid levels
+        15,   # winsize: Average window size
+        3,    # iterations: Number of times per iteration
+        5,    # poly_n: Pixel Neighborhood Size
+        1.2,  # poly_sigma: Gaussian standard deviation (statistics)
+        0     # flags
+    )
+    
+    # Calculate the magnitude and angle of the motion vector for each pixel
+    magnitude, angle = cv2.cartToPolar(flow[..., 0], flow[..., 1])
+    
+    # Create a motion mask to keep only pixels with motion greater than a threshold value
+    motion_mask = np.zeros_like(prev_frame_gray)
+    motion_mask[magnitude > threshold] = 255
+    
+    return motion_mask
