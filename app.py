@@ -1,6 +1,5 @@
-# app.py
+# app.py (更新后的版本)
 import cv2
-import os
 import json
 import sys
 from datetime import datetime
@@ -9,24 +8,30 @@ from picamera2 import Picamera2  # 在PC上测试时注释掉
 
 # 导入新模块和配置
 from backend import config
-from backend.vision.detection import detect_objects_yolo
 from backend.vision.models import load_secondary_model
+from backend.vision.pipelines import VisionPipeline
+from backend.vision.analyzers import GroupingAnalyzer, ColorAnalyzer, SecondaryClassifierAnalyzer
 from backend.llm.formatting import format_detections_as_json_for_llm
 from backend.llm.interaction import answer_question_with_deepseek
 
 class ImageProcessor:
     def __init__(self):
-        """初始化配置并加载模型。"""
-        print("Loading YOLO model...")
-        try:
-            self.yolo_model = YOLO(config.YOLO_MODEL_PATH)
-            print(f"YOLO model '{config.YOLO_MODEL_PATH}' loaded successfully.")
-        except Exception as e:
-            print(f"Error loading YOLO model: {e}")
-            sys.exit(1)
-            
-        print("Loading secondary classification model...")
-        self.secondary_model = load_secondary_model(config.SECONDARY_MODEL_TYPE, num_classes=4) # 示例类别数
+        """初始化配置、加载模型并构建视觉处理流水线。"""
+        print("Loading models...")
+        self.yolo_model = YOLO(config.YOLO_MODEL_PATH)
+        secondary_model = load_secondary_model(config.SECONDARY_MODEL_TYPE, num_classes=4)
+        
+        # --- 核心改动：定义分析器流水线 ---
+        analyzers = [
+            GroupingAnalyzer(),
+            ColorAnalyzer(),
+            SecondaryClassifierAnalyzer(secondary_model)
+            # 如果需要运动检测，可以添加 MotionAnalyzer()
+        ]
+        
+        # 创建流水线实例
+        self.pipeline = VisionPipeline(self.yolo_model, analyzers)
+        print("Vision pipeline created successfully.")
 
     def capture_image(self):
         """
@@ -71,21 +76,24 @@ class ImageProcessor:
             print(f"Error capturing image with picamera2: {str(e)}")
             return None, None
 
-    def process_and_annotate(self, image_bgr, capture_time):
-        """处理图像并返回结果。"""
-        if self.yolo_model is None or image_bgr is None:
-            return json.dumps({"message": "Processing failed."}), image_bgr
+
+    def process_and_get_results(self, image_bgr, capture_time):
+        """运行流水线并格式化结果。"""
+        print("Running vision pipeline...")
+        # 运行流水线
+        detections, annotated_image = self.pipeline.run(image_bgr)
         
-        print("Starting image analysis...")
-        detections_list, annotated_image = detect_objects_yolo(
-            image_bgr, self.yolo_model, self.secondary_model
-        )
+        # 将Detection对象转换为字典列表以进行JSON格式化
+        detections_dict_list = [vars(d) for d in detections]
+        
+        # 格式化为JSON
         json_detections = format_detections_as_json_for_llm(
-            detections_list, image_bgr.shape, capture_time
+            detections_dict_list, image_bgr.shape, capture_time
         )
-        print("Analysis complete.")
+        print("Pipeline finished.")
         return json_detections, annotated_image
 
+    # ... (display_annotated_image 和 question_loop 函数基本不变)
     def display_annotated_image(self, annotated_image):
         """显示带标注的图像。"""
         if annotated_image is not None:
@@ -123,9 +131,10 @@ class ImageProcessor:
         image_bgr, capture_time = self.capture_image()
         if image_bgr is None: return
         
-        json_detections, annotated_image = self.process_and_annotate(image_bgr, capture_time)
+        json_detections, annotated_image = self.process_and_get_results(image_bgr, capture_time)
         self.display_annotated_image(annotated_image)
         self.question_loop(json_detections)
+
 
 if __name__ == "__main__":
     processor = ImageProcessor()

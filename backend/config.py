@@ -1,12 +1,14 @@
 # backend/config.py
 
 # --- 路径与URL配置 ---
-YOLO_MODEL_PATH = 'backend/resource/models/electro.pt'
+YOLO_MODEL_PATH = 'backend/resource/models/yolov8n-seg.pt'
+# YOLO_MODEL_PATH = 'backend/resource/models/yolo11n.pt's
 SECONDARY_MODEL_TYPE = 'mobilenet_v3_small'
 OLLAMA_API_URL = 'http://localhost:11434/api/generate'
 DEEPSEEK_MODEL_NAME = 'deepseek-r1:8b'
 METADATA_PATH = 'backend/data/capture_metadata.json'
-IMAGE_SAVE_PATH = 'backend/data/captured_image.jpg'
+# IMAGE_PATH = 'backend/data/captured_image.jpg'
+IMAGE_PATH = 'capture1.jpg'
 RESPONSE_LOG_PATH = 'backend/resource/response_log.json'
 
 # --- 模型与逻辑配置 ---

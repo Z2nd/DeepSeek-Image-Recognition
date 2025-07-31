@@ -3,15 +3,18 @@ import json
 
 def format_detections_as_json_for_llm(detections_list, image_shape, capture_time=None):
     """将单帧的检测结果格式化为JSON字符串。"""
+
+    features_copy = detections_list[0].get("features", {}).copy()
+
     data = {
         "image_height": image_shape[0],
         "image_width": image_shape[1],
         "capture_time": capture_time or "unknown",
         "detections": [
             {
-                "class": d["class"], "group": d["group"], "confidence": d["confidence"],
-                "bbox": d["bbox"], "color_name": d["color_name"], "mask_area": d["mask_area"],
-                "sub_class": d["sub_class"], "sub_confidence": d["sub_confidence"]
+                "class": d["class_name"], "confidence": d["confidence"],
+                "bbox": d["bbox"], 
+                **{k: v for k, v in features_copy.items() if k != "dominant_color_hsv"},
             } for d in detections_list
         ]
     }
@@ -28,10 +31,9 @@ def format_sequence_detections_for_llm(sequence_detections, capture_times):
             "capture_time": capture_times[i],
             "detections": [
                 {
-                    "class": d["class"], "group": d["group"], "confidence": d["confidence"],
-                    "bbox": d["bbox"], "color_name": d.get("color_name", "unknown"),
-                    "mask_area": d.get("mask_area", 0.0), "sub_class": d.get("sub_class", "unknown"),
-                    "is_moving": d.get("is_moving", False)
+                    "class": d["class"], "confidence": d["confidence"],
+                    "bbox": d["bbox"], 
+                    **d.get("features", {}),
                 } for d in detections_list
             ]
         }
