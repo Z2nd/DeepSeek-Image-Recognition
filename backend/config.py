@@ -15,12 +15,20 @@ RESPONSE_LOG_PATH = 'backend/resource/response_log.json'
 
 # --- 分层检测配置 ---
 # 定义哪个主类别应该触发哪个YOLO模型进行二次检测
-HIERARCHICAL_DETECTION_CONFIG = {
+RECURSIVE_DETECTION_CONFIG = {
     # 当主模型检测到 'person' 时，使用 'electro.pt' 在其区域内进行二次检测
     # 注意：这里的 'person' 是一个示例，您应该换成主模型能识别的容器类物体，
     # 比如 'circuit board' (如果您的主模型能识别它的话)。
     # 假设您的best.pt能识别'pcb'类别，可以写成 'pcb': YOLO_ELECTRONICS_MODEL_PATH
-    "person": YOLO_EMOTION_MODEL_PATH
+    "person": {
+        'model_path': YOLO_FACE_MODEL_PATH,
+        'sub_config': {
+            "face": {
+                'model_path': YOLO_EMOTION_MODEL_PATH,
+                'sub_config': {}
+                }
+            }
+    }
 }
 
 # --- 模型与逻辑配置 ---

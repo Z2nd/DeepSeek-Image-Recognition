@@ -38,49 +38,42 @@ def draw_segmentation_masks(image: np.ndarray, detections: list, alpha: float = 
 
 def draw_enhanced_annotations(image: np.ndarray, detections_list: list):
     """
-    在图像上绘制边界框和标签，现在支持递归绘制子检测。
+    在图像上绘制边界框和标签，支持递归绘制并用不同颜色区分层级。
     """
     annotated_image = image.copy()
     img_height, img_width, _ = annotated_image.shape
+    
+    # 定义不同层级的颜色 (主检测=绿色, 二级=橙色, 三级=洋红, ...)
+    level_colors = [(0, 255, 0), (255, 165, 0), (255, 0, 255), (0, 255, 255)]
 
-    # 使用一个辅助函数来处理绘制，以便递归
-    def _draw_single_detection(img, detection, is_sub_detection=False):
-        bbox = detection.get("bbox")
-        if not bbox: return
-        
-        x1, y1, x2, y2 = map(int, bbox)
-        class_name = detection.get("class", "N/A")
-        conf = detection.get("confidence", 0)
-        
-        # 为主检测和子检测使用不同颜色
-        box_color = (255, 165, 0) if is_sub_detection else (0, 255, 0) # 子检测用橙色，主检测用绿色
-        label_text_color = (255, 255, 255) if is_sub_detection else (0, 0, 0) # 子检测用白色字
-
-        box_thickness = max(1, int(img_width / 600))
-        cv2.rectangle(img, (x1, y1), (x2, y2), box_color, box_thickness)
-        
-        label = f"{class_name} {conf:.2f}"
-        font_scale = max(0.4, (x2 - x1) / 300)
-        font_thickness = max(1, int(font_scale * 1.5))
-        font_face = cv2.FONT_HERSHEY_SIMPLEX
-
-        (text_width, text_height), baseline = cv2.getTextSize(label, font_face, font_scale, font_thickness)
-        
-        label_y = y1 - 5
-        if label_y - text_height < 0:
-            label_y = y1 + text_height + 5
+    def _draw_recursive(img, detections, level=0):
+        for d in detections:
+            # --- 绘制当前层级的检测 ---
+            bbox = d.bbox
+            class_name = d.class_name
+            conf = d.confidence
             
-        cv2.rectangle(img, (x1, label_y - text_height - baseline), (x1 + text_width, label_y + baseline), box_color, -1)
-        cv2.putText(img, label, (x1, label_y), font_face, font_scale, label_text_color, font_thickness, cv2.LINE_AA)
+            box_color = level_colors[level % len(level_colors)]
+            label_text_color = (0, 0, 0)
 
-    # 遍历主检测列表
-    for detection in detections_list:
-        _draw_single_detection(annotated_image, detection, is_sub_detection=False)
-        
-        # 如果有子检测，递归绘制它们
-        if 'features' in detection and 'sub_detections' in detection['features']:
-            sub_detections_dicts = [vars(d) for d in detection['features']['sub_detections']]
-            for sub_detection in sub_detections_dicts:
-                 _draw_single_detection(annotated_image, sub_detection, is_sub_detection=True)
+            box_thickness = max(1, int(img_width / (600 + level * 200)))
+            cv2.rectangle(img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), box_color, box_thickness)
+            
+            label = f"{class_name} {conf:.2f}"
+            font_scale = max(0.3, (bbox[2] - bbox[0]) / 350)
+            font_thickness = max(1, int(font_scale * 1.5))
+            
+            (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_thickness)
+            y1_label = bbox[1] - 5
+            if y1_label - th < 0: y1_label = bbox[1] + th + 5
+            
+            cv2.rectangle(img, (bbox[0], y1_label - th), (bbox[0] + tw, y1_label), box_color, -1)
+            cv2.putText(img, label, (bbox[0], y1_label), cv2.FONT_HERSHEY_SIMPLEX, font_scale, label_text_color, font_thickness)
 
+            # --- 递归调用绘制子检测 ---
+            if 'sub_detections' in d.features and d.features['sub_detections']:
+                _draw_recursive(img, d.features['sub_detections'], level + 1)
+
+    # 从顶层（level 0）开始绘制
+    _draw_recursive(annotated_image, detections_list, 0)
     return annotated_image
