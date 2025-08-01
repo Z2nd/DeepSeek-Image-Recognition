@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.cluster import KMeans
 from backend import config
 
-def get_dominant_color(image, mask=None, color_space='HSV', n_clusters=1):
+def get_dominant_color(image, mask=None, color_space='HSL', n_clusters=1):
     """使用K-Means提取图像区域的主导颜色。"""
     # 提取感兴趣区域的像素
     if mask is not None:

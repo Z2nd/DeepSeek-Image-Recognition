@@ -1,9 +1,9 @@
 # backend/vision/analyzers.py
 import numpy as np
+from ultralytics import YOLO
 from backend import config
 from .core import Analyzer, Detection
 from .features import get_dominant_color
-from .classification import secondary_classification
 
 class GroupingAnalyzer(Analyzer):
     """根据类别ID为物体分组。"""
@@ -27,28 +27,65 @@ class ColorAnalyzer(Analyzer):
         dominant_color, color_name = get_dominant_color(
             original_image, 
             mask=detection.mask,
-            color_space='HSV'
+            color_space='HSL'
         )
-        detection.add_feature('dominant_color_hsv', dominant_color)
+        detection.add_feature('dominant_color_hsl', dominant_color)
         detection.add_feature('color_name', color_name)
 
-class SecondaryClassifierAnalyzer(Analyzer):
-    """执行二次分类以获取子类别。"""
-    def __init__(self, secondary_model):
-        self.secondary_model = secondary_model
+class HierarchicalYOLOAnalyzer(Analyzer):
+    """
+    在一个已检测到的物体ROI上，执行另一个YOLO模型进行二次检测。
+    """
+    def __init__(self):
+        print("Loading hierarchical YOLO models...")
+        self.secondary_models = {}
+        for class_name, model_path in config.HIERARCHICAL_DETECTION_CONFIG.items():
+            try:
+                self.secondary_models[class_name] = YOLO(model_path)
+                print(f" - Loaded '{model_path}' for class '{class_name}'")
+            except Exception as e:
+                print(f"Error loading secondary YOLO model {model_path}: {e}")
 
     def analyze(self, detection: Detection, **kwargs):
-        group = detection.features.get('group', 'other')
-        sub_class, sub_conf = 'unknown', 0.0
+        # 检查当前检测的类别是否需要二次检测
+        if detection.class_name in self.secondary_models:
+            secondary_model = self.secondary_models[detection.class_name]
+            roi_image = detection.roi
+            
+            if roi_image is None or roi_image.size == 0:
+                detection.add_feature('sub_detections', [])
+                return
+            
+            # 在ROI上运行二次检测
+            sub_results = secondary_model(roi_image)
+            sub_detections = []
+            
+            # 获取父级边界框的左上角坐标，用于坐标转换
+            parent_x1, parent_y1 = detection.bbox[0], detection.bbox[1]
 
-        if self.secondary_model and group in ['animal', 'vehicle']:
-            class_map = config.ANIMAL_SUBCLASSES if group == 'animal' else config.VEHICLE_SUBCLASSES
-            class_names = class_map.get(detection.class_name, [])
-            if class_names:
-                sub_class, sub_conf = secondary_classification(detection.roi, self.secondary_model, class_names)
-        
-        detection.add_feature('sub_class', sub_class)
-        detection.add_feature('sub_confidence', sub_conf)
+            for sub_res in sub_results:
+                if sub_res.boxes is None: continue
+                for sub_box in sub_res.boxes:
+                    # 获取相对于ROI的坐标
+                    x1_rel, y1_rel, x2_rel, y2_rel = map(int, sub_box.xyxy[0])
+                    
+                    # 转换为相对于原始大图的绝对坐标
+                    x1_abs = parent_x1 + x1_rel
+                    y1_abs = parent_y1 + y1_rel
+                    x2_abs = parent_x1 + x2_rel
+                    y2_abs = parent_y1 + y2_rel
+                    
+                    # 创建一个新的Detection对象来存储子检测结果
+                    sub_detection_obj = Detection(
+                        bbox=[x1_abs, y1_abs, x2_abs, y2_abs],
+                        class_name=secondary_model.names[int(sub_box.cls)],
+                        confidence=float(sub_box.conf),
+                        roi=roi_image[y1_rel:y2_rel, x1_rel:x2_rel] # ROI中的ROI
+                    )
+                    sub_detections.append(sub_detection_obj)
+            
+            # 将子检测列表作为一项新特征添加到父物体中
+            detection.add_feature('sub_detections', sub_detections)
 
 class MotionAnalyzer(Analyzer):
     """判断物体是否在运动。"""

@@ -38,43 +38,49 @@ def draw_segmentation_masks(image: np.ndarray, detections: list, alpha: float = 
 
 def draw_enhanced_annotations(image: np.ndarray, detections_list: list):
     """
-    在图像上绘制清晰、自适应的边界框和标签。
-    (此函数代码与之前相同，保持不变)
+    在图像上绘制边界框和标签，现在支持递归绘制子检测。
     """
     annotated_image = image.copy()
     img_height, img_width, _ = annotated_image.shape
 
-    for detection in detections_list:
+    # 使用一个辅助函数来处理绘制，以便递归
+    def _draw_single_detection(img, detection, is_sub_detection=False):
         bbox = detection.get("bbox")
-        if not bbox:
-            continue
+        if not bbox: return
         
         x1, y1, x2, y2 = map(int, bbox)
         class_name = detection.get("class", "N/A")
         conf = detection.get("confidence", 0)
-        color_name = detection.get("color_name", "")
-        sub_class = detection.get("sub_class", "unknown")
         
-        box_color = (0, 255, 0)
-        box_thickness = max(1, int(img_width / 500))
-        cv2.rectangle(annotated_image, (x1, y1), (x2, y2), box_color, box_thickness)
-        
-        if sub_class != 'unknown' and sub_class is not None:
-            label = f"{class_name} ({sub_class}, {color_name}) {conf:.2f}"
-        else:
-            label = f"{class_name} ({color_name}) {conf:.2f}"
+        # 为主检测和子检测使用不同颜色
+        box_color = (255, 165, 0) if is_sub_detection else (0, 255, 0) # 子检测用橙色，主检测用绿色
+        label_text_color = (255, 255, 255) if is_sub_detection else (0, 0, 0) # 子检测用白色字
 
-        font_scale = max(0.5, (x2 - x1) / 250)
-        font_thickness = max(1, int(font_scale * 2))
+        box_thickness = max(1, int(img_width / 600))
+        cv2.rectangle(img, (x1, y1), (x2, y2), box_color, box_thickness)
+        
+        label = f"{class_name} {conf:.2f}"
+        font_scale = max(0.4, (x2 - x1) / 300)
+        font_thickness = max(1, int(font_scale * 1.5))
         font_face = cv2.FONT_HERSHEY_SIMPLEX
 
         (text_width, text_height), baseline = cv2.getTextSize(label, font_face, font_scale, font_thickness)
         
-        label_y = y1 - 10
+        label_y = y1 - 5
         if label_y - text_height < 0:
-            label_y = y1 + text_height + 10
+            label_y = y1 + text_height + 5
             
-        cv2.rectangle(annotated_image, (x1, label_y - text_height - baseline), (x1 + text_width, label_y + baseline), box_color, -1)
-        cv2.putText(annotated_image, label, (x1, label_y), font_face, font_scale, (0, 0, 0), font_thickness, cv2.LINE_AA)
+        cv2.rectangle(img, (x1, label_y - text_height - baseline), (x1 + text_width, label_y + baseline), box_color, -1)
+        cv2.putText(img, label, (x1, label_y), font_face, font_scale, label_text_color, font_thickness, cv2.LINE_AA)
+
+    # 遍历主检测列表
+    for detection in detections_list:
+        _draw_single_detection(annotated_image, detection, is_sub_detection=False)
+        
+        # 如果有子检测，递归绘制它们
+        if 'features' in detection and 'sub_detections' in detection['features']:
+            sub_detections_dicts = [vars(d) for d in detection['features']['sub_detections']]
+            for sub_detection in sub_detections_dicts:
+                 _draw_single_detection(annotated_image, sub_detection, is_sub_detection=True)
 
     return annotated_image
