@@ -11,11 +11,11 @@ class VisionPipeline:
         """
         执行视觉分析流水线，核心是调用递归分析器。
         """
-        # --- 新增：从kwargs中移除已明确传递的参数，增加代码稳健性 ---
+        # --- Remove explicitly passed parameters from kwargs to increase code robustness ---
         kwargs.pop('yolo_model', None)
         kwargs.pop('original_image', None)
 
-        # 1. 启动递归分析
+        # 1. Initiate recursive analysis
         all_detections = self.recursive_analyzer.analyze(
             None, 
             original_image=image_bgr, 
@@ -23,7 +23,7 @@ class VisionPipeline:
             **kwargs
         )
         
-        # 2. 绘制所有层级的标注
+        # 2. Drawing all layers of annotations
         annotated_image = draw_enhanced_annotations(image_bgr, all_detections)
 
         return all_detections, annotated_image

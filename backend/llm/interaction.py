@@ -6,7 +6,7 @@ import psutil
 import re
 
 def answer_question_with_deepseek(json_detections, question, ollama_api_url, model_name, max_retries=3, retry_delay=2):
-    """使用DeepSeek生成问题的答案。"""
+    """Generate answers to questions using DeepSeek."""
     metrics = {"question": question, "start_time": time.time(), "status": "pending"}
     process = psutil.Process()
     
@@ -41,7 +41,8 @@ def answer_question_with_deepseek(json_detections, question, ollama_api_url, mod
                 response.raise_for_status()
                 
                 response_json = response.json()
-                final_answer = response_json.get("response", "No answer generated.").strip()
+                full_response = response_json.get("response", "No answer generated.").strip()
+                final_answer = re.sub(r'<think>.*?</think>', ' ', full_response, flags=re.DOTALL)
                 
                 metrics.update({
                     "inference_time": time.time() - start_time,

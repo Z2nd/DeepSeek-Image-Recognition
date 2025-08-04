@@ -42,7 +42,6 @@ class ImageProcessor:
         
         # 定义将在每个检测层级应用的基础分析器
         base_analyzers = [
-            GroupingAnalyzer(),
             ColorAnalyzer(),
         ]
         

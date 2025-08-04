@@ -6,19 +6,6 @@ from .core import Analyzer, Detection
 from .features import get_dominant_color
 from .detection import get_initial_detections
 
-class GroupingAnalyzer(Analyzer):
-    """根据类别ID为物体分组。"""
-    def analyze(self, detection: Detection, **kwargs):
-        yolo_model = kwargs.get('yolo_model')
-        if not yolo_model: return
-        
-        cls_id = next((k for k, v in yolo_model.names.items() if v == detection.class_name), None)
-        if cls_id is not None:
-            group = next((g for g, ids in config.CATEGORY_GROUPS.items() if cls_id in ids), 'other')
-            detection.add_feature('group', group)
-        else:
-            detection.add_feature('group', 'unknown')
-
 class ColorAnalyzer(Analyzer):
     """分析物体的主导颜色。"""
     def analyze(self, detection: Detection, **kwargs):
@@ -30,7 +17,7 @@ class ColorAnalyzer(Analyzer):
             mask=detection.mask,
             color_space='HSV'
         )
-        detection.add_feature('dominant_color_hsv', dominant_color)
+        # detection.add_feature('dominant_color_hsv', dominant_color)
         detection.add_feature('color_name', color_name)
 
 class RecursiveYOLOAnalyzer(Analyzer):
