@@ -22,7 +22,7 @@ except ImportError:
 # 导入重构后的项目模块和配置
 from backend import config
 from backend.vision.pipelines import VisionPipeline
-from backend.vision.analyzers import GroupingAnalyzer, ColorAnalyzer, RecursiveYOLOAnalyzer
+from backend.vision.analyzers import ColorAnalyzer, RecursiveYOLOAnalyzer
 from backend.llm.formatting import format_detections_as_json_for_llm
 from backend.llm.interaction import answer_question_with_deepseek
 
@@ -34,8 +34,8 @@ class ImageProcessor:
         """初始化配置、加载模型并构建视觉处理流水线。"""
         print("正在加载主YOLO模型...")
         try:
-            self.yolo_model = YOLO(config.YOLO_GENERAL_MODEL_PATH)
-            print(f"主模型 '{config.YOLO_GENERAL_MODEL_PATH}' 加载成功。")
+            self.yolo_model = YOLO(config.YOLO_COCO_SEGMENTATION_MODEL_PATH)
+            print(f"主模型 '{config.YOLO_COCO_SEGMENTATION_MODEL_PATH}' 加载成功。")
         except Exception as e:
             print(f"错误: 无法加载主YOLO模型: {e}")
             sys.exit(1)
@@ -79,8 +79,8 @@ class ImageProcessor:
                 image_bgr = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
                 
                 # 保存捕获的图像
-                cv2.imwrite(config.IMAGE_SAVE_PATH, image_bgr)
-                print(f"图像成功捕获并保存至: {config.IMAGE_SAVE_PATH}")
+                cv2.imwrite(config.IMAGE_PATH, image_bgr)
+                print(f"图像成功捕获并保存至: {config.IMAGE_PATH}")
                 
                 return image_bgr, capture_time
             except Exception as e:
@@ -88,10 +88,10 @@ class ImageProcessor:
                 return None, None
         else:
             # 模拟模式：加载本地文件
-            print(f"模拟捕获模式: 正在从 '{config.IMAGE_SAVE_PATH}' 加载图像...")
-            image_bgr = cv2.imread(config.IMAGE_SAVE_PATH)
+            print(f"模拟捕获模式: 正在从 '{config.IMAGE_PATH}' 加载图像...")
+            image_bgr = cv2.imread(config.IMAGE_PATH)
             if image_bgr is None:
-                print(f"错误: 无法从 {config.IMAGE_SAVE_PATH} 加载图像。请确保文件存在。")
+                print(f"错误: 无法从 {config.IMAGE_PATH} 加载图像。请确保文件存在。")
                 return None, None
             print("图像加载成功。")
             return image_bgr, capture_time
@@ -144,7 +144,7 @@ class ImageProcessor:
                 continue
             
             print("正在生成回答...")
-            final_answer, _, metrics = answer_question_with_deepseek(
+            final_answer, full_response ,metrics = answer_question_with_deepseek(
                 json_detections, question, config.OLLAMA_API_URL, config.DEEPSEEK_MODEL_NAME
             )
             print(f"回答: {final_answer}")
@@ -155,6 +155,7 @@ class ImageProcessor:
             response_log.append({
                 "question": question, 
                 "answer": final_answer, 
+                "full_response": full_response,
                 "metrics": metrics,
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             })

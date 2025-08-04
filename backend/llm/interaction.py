@@ -46,10 +46,12 @@ def answer_question_with_deepseek(json_detections, question, ollama_api_url, mod
                 
                 metrics.update({
                     "inference_time": time.time() - start_time,
+                    "total_duration": response_json.get("total_duration", 0),
+                    "load_duration": response_json.get("load_duration", 0),
                     "memory_mb": process.memory_info().rss / (1024 * 1024),
                     "retry_attempts": attempt, "status": "success"
                 })
-                return final_answer, response_json, metrics
+                return final_answer, full_response, metrics
             except (requests.exceptions.RequestException) as e:
                 print(f"API attempt {attempt + 1}/{max_retries} failed: {str(e)}")
                 if attempt < max_retries - 1:
