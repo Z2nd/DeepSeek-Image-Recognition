@@ -19,7 +19,7 @@ def answer_question_with_deepseek(json_detections, question, ollama_api_url, mod
                 "You are an AI assistant analyzing a sequence of image frames. "
                 f"Analyze the objects and their changes over time based on the following data:\n"
                 f"Data: {json_detections}\n\n"
-                f"Please answer the following user question in concise, natural descriptive language, one sentence:\n"
+                f"Please answer the following user question in concise, natural descriptive language.Keep your answers as concise as possible. If the question is broad in scope, avoid providing overly detailed responses.:\n"
                 f"Question: {question}"
             )
         else:
