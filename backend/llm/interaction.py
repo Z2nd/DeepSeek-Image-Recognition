@@ -16,11 +16,21 @@ def answer_question_with_deepseek(json_detections, question, ollama_api_url, mod
 
         if is_sequence:
             prompt = (
-                "You are an AI assistant analyzing a sequence of image frames. "
-                f"Analyze the objects and their changes over time based on the following data:\n"
-                f"Data: {json_detections}\n\n"
-                f"Please answer the following user question in concise, natural descriptive language.Keep your answers as concise as possible. If the question is broad in scope, avoid providing overly detailed responses.:\n"
-                f"Question: {question}"
+                f"""
+You are an expert visual analyst. Your task is to describe an image based on the provided JSON data.
+
+JSON Data:
+{json_detections}
+
+Rules:
+1.Summarize First: For general questions like "What do you see?" or "Describe the image," provide a overall summary in a single sentence in final response. Mention the main objects and the total count of items.
+2.Do Not List All Details: Do not list the properties (like bbox, confidence, color) of every single object unless the user asks for details. Your goal is to be concise initially.
+3.Answer Specifics Directly: If the user asks about a specific object (e.g., "What color is the ESP32?" or "Tell me more about the components on the right"), use the detailed information from the JSON to provide a direct and detailed answer.
+4.The (0,0) coordinate is the top-left corner of the image.
+
+Based on these rules, answer the following user question:
+Question: {question}
+"""
             )
         else:
             prompt = (

@@ -6,13 +6,14 @@ YOLO_ELECTRONICS_MODEL_PATH = 'backend/resource/models/electro.pt' # 电子元�
 YOLO_FACE_MODEL_PATH = 'backend/resource/models/face.pt' # 人脸检测模型
 YOLO_EMOTION_MODEL_PATH = 'backend/resource/models/emotion.pt' # 情感分析模型
 YOLO_CIRCUIT_BOARD_MODEL_PATH = 'backend/resource/models/circuit-board.pt'
+YOLO_PCB_MODEL_PATH = 'backend/resource/models/pcb.pt'
 
 OLLAMA_API_URL = 'http://localhost:11434/api/generate'
 DEEPSEEK_MODEL_NAME = 'deepseek-r1:8b'
 METADATA_PATH = 'backend/data/capture_metadata.json'
-# IMAGE_PATH = 'backend/data/captured_image.jpg'
+IMAGE_PATH = 'backend/data/captured_image.jpg'
 # IMAGE_PATH = 'backend/data/bus.jpg'
-IMAGE_PATH = 'backend/data/e-test.jpg'
+# IMAGE_PATH = 'backend/data/e-test.jpg'
 RESPONSE_LOG_PATH = 'backend/data/response_log.json'
 
 # --- 分层检测配置 ---

@@ -1,12 +1,17 @@
 # backend/vision/core.py
 from abc import ABC, abstractmethod
 import numpy as np
+import itertools
+
+# 用于生成唯一ID的计数器
+id_counter = itertools.count()
 
 class Detection:
     """
     一个用于存储单个检测物体所有信息的数据类。
     """
     def __init__(self, bbox, class_name, confidence, mask=None, roi=None):
+        self.id = next(id_counter) # 新增：为每个检测对象分配一个唯一ID
         self.bbox = bbox  # 边界框 [x1, y1, x2, y2]
         self.class_name = class_name  # 主要类别名称
         self.confidence = confidence  # YOLO置信度
@@ -19,7 +24,7 @@ class Detection:
         self.features[name] = value
 
     def __repr__(self):
-        return f"Detection(class={self.class_name}, conf={self.confidence:.2f}, features={list(self.features.keys())})"
+        return f"Detection(id={self.id}, class={self.class_name}, conf={self.confidence:.2f}, features={list(self.features.keys())})"
 
 class Analyzer(ABC):
     """
