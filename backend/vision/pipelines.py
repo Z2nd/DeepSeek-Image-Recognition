@@ -1,6 +1,6 @@
 from .core import Detection, Analyzer
 from .detection import get_initial_detections
-from .drawing import draw_enhanced_annotations
+from .drawing import draw_enhanced_annotations, draw_segmentation_masks
 
 
 class VisionPipeline:
@@ -27,9 +27,10 @@ class VisionPipeline:
         
         # --- 2. 新增：运行所有的后处理分析器 ---
         for post_analyzer in self.post_analyzers:
-            post_analyzer.analyze_all(all_detections)
+            post_analyzer.analyze(all_detections)
             
         # 3. 绘制所有层级的标注
         annotated_image = draw_enhanced_annotations(image_bgr, all_detections)
+        annotated_image = draw_segmentation_masks(annotated_image, all_detections)
 
         return all_detections, annotated_image

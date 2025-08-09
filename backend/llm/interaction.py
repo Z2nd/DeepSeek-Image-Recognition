@@ -23,7 +23,7 @@ JSON Data:
 {json_detections}
 
 Rules:
-1.Summarize First: For general questions like "What do you see?" or "Describe the image," provide a overall summary in a single sentence in final response. Mention the main objects and the total count of items.
+1.Summarize First: For general questions like "What do you see?" or "Describe the image," provide a overall summary in a single sentence in final response. Only mention the main objects and the total count of items.
 2.Do Not List All Details: Do not list the properties (like bbox, confidence, color) of every single object unless the user asks for details. Your goal is to be concise initially.
 3.Answer Specifics Directly: If the user asks about a specific object (e.g., "What color is the ESP32?" or "Tell me more about the components on the right"), use the detailed information from the JSON to provide a direct and detailed answer.
 4.The (0,0) coordinate is the top-left corner of the image.

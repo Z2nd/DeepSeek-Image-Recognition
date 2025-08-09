@@ -15,9 +15,9 @@ class ColorAnalyzer(Analyzer):
         dominant_color, color_name = get_dominant_color(
             original_image, 
             mask=detection.mask,
-            color_space='HSV'
+            color_space='HSL'
         )
-        # detection.add_feature('dominant_color_hsv', dominant_color)
+        detection.add_feature('dominant_color_hsv', dominant_color)
         detection.add_feature('color_name', color_name)
 
 class RecursiveYOLOAnalyzer(Analyzer):
@@ -89,62 +89,44 @@ class RecursiveYOLOAnalyzer(Analyzer):
                         next_kwargs['yolo_model'] = secondary_model
                         self._recursive_analyze(sub_detections, next_level_config, **next_kwargs)
 
-class SpatialAnalyzer:
+class GridPositionAnalyzer(Analyzer):
     """
-    一个后处理分析器，用于分析所有检测对象之间的空间关系。
-    注意：它的接口与标准的Analyzer不同，因为它需要处理整个列表。
+    Analyzes the position of a detection within a 3x3 grid on the image.
+    Adds a 'position' attribute to the detection.
     """
-    def __init__(self, tolerance=1.5):
-        # 容差因子，用于判断主方向。值越大，对角线方向越容易被判定为纯粹的上下或左右。
-        self.tolerance = tolerance
-
-    def _get_centroid(self, bbox):
-        """计算边界框的中心点。"""
-        x1, y1, x2, y2 = bbox
-        return (x1 + x2) / 2, (y1 + y2) / 2
-
-    def _is_inside(self, bbox1, bbox2):
-        """判断bbox1是否在bbox2内部。"""
-        return bbox1[0] >= bbox2[0] and bbox1[1] >= bbox2[1] and \
-               bbox1[2] <= bbox2[2] and bbox1[3] <= bbox2[3]
-
-    def analyze_all(self, detections: list[Detection]):
+    def __init__(self, image_width: int, image_height: int):
         """
-        分析列表中所有检测对象两两之间的空间关系。
+        Initializes the analyzer with the dimensions of the image.
+        :param image_width: The width of the image.
+        :param image_height: The height of the image.
         """
-        # 为每个detection对象初始化空间关系列表
-        for d in detections:
-            d.add_feature('spatial_relationships', [])
+        self.image_width = image_width
+        self.image_height = image_height
+        self.grid_labels = [
+            ["top-left", "top-center", "top-right"],
+            ["middle-left", "middle-center", "middle-right"],
+            ["bottom-left", "bottom-center", "bottom-right"]
+        ]
 
-        # 使用双层循环比较每一对不同的物体
-        for i in range(len(detections)):
-            for j in range(len(detections)):
-                if i == j:
-                    continue
+    def analyze(self, detection: Detection):
+        """
+        Determines the grid position of the detection and updates it.
+        :param detection: The Detection object to analyze.
+        """
+        for d in detection:
 
-                d1 = detections[i]
-                d2 = detections[j]
+            # Calculate the center of the bounding box
+            box = d.bbox
+            center_x = (box[0] + box[2]) / 2
+            center_y = (box[1] + box[3]) / 2
 
-                # 1. 检查包含关系
-                if self._is_inside(d1.bbox, d2.bbox):
-                    d1.features['spatial_relationships'].append(f"inside '{d2.class_name}' (id:{d2.id})")
-                    continue # 如果在内部，则不再判断方向关系
+            # Determine the grid cell
+            grid_x = int(center_x / self.image_width * 3)
+            grid_y = int(center_y / self.image_height * 3)
 
-                # 2. 检查方向关系
-                cx1, cy1 = self._get_centroid(d1.bbox)
-                cx2, cy2 = self._get_centroid(d2.bbox)
-                
-                dx = cx1 - cx2
-                dy = cy1 - cy2
-
-                # 根据容差判断主导方向
-                if abs(dx) > abs(dy) * self.tolerance:
-                    if dx < 0:
-                        d1.features['spatial_relationships'].append(f"left_of '{d2.class_name}' (id:{d2.id})")
-                    else:
-                        d1.features['spatial_relationships'].append(f"right_of '{d2.class_name}' (id:{d2.id})")
-                elif abs(dy) > abs(dx) * self.tolerance:
-                    if dy < 0:
-                        d1.features['spatial_relationships'].append(f"above '{d2.class_name}' (id:{d2.id})")
-                    else:
-                        d1.features['spatial_relationships'].append(f"below '{d2.class_name}' (id:{d2.id})")
+            # Clamp values to be within the grid bounds (0-2)
+            grid_x = min(grid_x, 2)
+            grid_y = min(grid_y, 2)
+            
+            position = self.grid_labels[grid_y][grid_x]
+            d.add_feature('position', position)
