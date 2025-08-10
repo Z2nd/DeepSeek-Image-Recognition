@@ -11,36 +11,22 @@ def answer_question_with_deepseek(json_detections, question, ollama_api_url, mod
     process = psutil.Process()
     
     try:
-        detections_data = json.loads(json_detections)
-        is_sequence = "frames" in detections_data
-
-        if is_sequence:
-            prompt = (
+        prompt = (
                 f"""
 You are an expert visual analyst. Your task is to describe an image based on the provided JSON data.
 
-JSON Data:
+Detected objects data:
 {json_detections}
 
 Rules:
 1.Summarize First: For general questions like "What do you see?" or "Describe the image," provide a overall summary in a single sentence in final response. Only mention the main objects and the total count of items.
-2.Do Not List All Details: Do not list the properties (like bbox, confidence, color) of every single object unless the user asks for details. Your goal is to be concise initially.
+2.Do Not List All Details: Do not list the properties (like bbox, confidence, color, text, etc) of every single object unless the user asks for details. Your goal is to be concise initially.
 3.Answer Specifics Directly: If the user asks about a specific object (e.g., "What color is the ESP32?" or "Tell me more about the components on the right"), use the detailed information from the JSON to provide a direct and detailed answer.
 4.The (0,0) coordinate is the top-left corner of the image.
 
 Based on these rules, answer the following user question:
 Question: {question}
 """
-            )
-        else:
-            prompt = (
-                "You are an AI assistant that answers questions about an image based on structured detection data. "
-                f"The image is {detections_data.get('image_height')}x{detections_data.get('image_width')} pixels, "
-                f"captured at {detections_data.get('capture_time')}.\n"
-                "Detected objects data:\n"
-                f"{json_detections}\n"
-                "Answer the following question in concise, natural language:\n"
-                f"Question: {question}"
             )
 
         for attempt in range(max_retries):

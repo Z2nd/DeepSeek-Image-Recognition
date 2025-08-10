@@ -7,13 +7,12 @@ YOLO_FACE_MODEL_PATH = 'backend/resource/models/face.pt' # 人脸检测模型
 YOLO_EMOTION_MODEL_PATH = 'backend/resource/models/emotion.pt' # 情感分析模型
 # YOLO_PCB_MODEL_PATH = 'backend/resource/models/circuit-board.pt'
 YOLO_PCB_MODEL_PATH = 'backend/resource/models/pcb.pt'
+YOLO_STUDYDESKITEM_MODEL_PATH = 'backend/resource/models/study-desk-item.pt' # 学习桌物品检测模型
 
 OLLAMA_API_URL = 'http://localhost:11434/api/generate'
 DEEPSEEK_MODEL_NAME = 'deepseek-r1:8b'
 METADATA_PATH = 'backend/data/capture_metadata.json'
-# IMAGE_PATH = 'backend/data/captured_image.jpg'
-IMAGE_PATH = 'backend/data/bus.jpg'
-# IMAGE_PATH = 'backend/data/e-test.jpg'
+IMAGE_PATH = 'backend/data/study-desk.jpg'
 RESPONSE_LOG_PATH = 'backend/data/response_log.json'
 
 # --- 分层检测配置 ---
@@ -62,3 +61,15 @@ COLOR_NAMES = {
     (75, 165): 'green', (165, 195): 'cyan', (195, 255): 'blue',
     (255, 345): 'purple', (345, 360): 'red'
 }
+
+# --- OCR 配置 ---
+# 在这个列表中的类别，将会触发OCR文字识别
+OCR_ENABLED_CLASSES = [
+    "Arduino-Mega",
+    "Arduino-Nano",
+    "Arduino-Uno",
+    "ESP32",
+    "ESP32-CAM",
+    "bus"
+    # 您未来可以添加其他类别，例如 'book', 'sign', 'license_plate' 等
+]

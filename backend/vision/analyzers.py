@@ -5,6 +5,7 @@ from backend import config
 from .core import Analyzer, Detection
 from .features import get_dominant_color
 from .detection import get_initial_detections
+from .ocr import get_text_from_image
 
 class ColorAnalyzer(Analyzer):
     """分析物体的主导颜色。"""
@@ -130,3 +131,20 @@ class GridPositionAnalyzer(Analyzer):
             
             position = self.grid_labels[grid_y][grid_x]
             d.add_feature('position', position)
+
+class OCRAnalyzer(Analyzer):
+    """
+    对指定的检测对象运行OCR，提取文字信息。
+    """
+    def analyze(self, detection: Detection, **kwargs):
+        """
+        如果检测对象的类别在配置文件的白名单中，则对其ROI进行OCR。
+        """
+        # 检查该物体的类别是否在配置文件指定的OCR名单中
+        if detection.class_name in config.OCR_ENABLED_CLASSES:
+            # 调用OCR函数处理物体的ROI
+            recognized_text = get_text_from_image(detection.roi)
+            
+            # 如果识别到了文字，就将其添加到特征字典中
+            if recognized_text:
+                detection.add_feature('text', recognized_text)
