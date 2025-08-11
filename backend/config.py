@@ -41,6 +41,13 @@ RECURSIVE_DETECTION_CONFIG = {
     # 假设您的best.pt能识别'pcb'类别，可以写成 'pcb': YOLO_ELECTRONICS_MODEL_PATH
     "person": {
         'model_path': YOLO_FACE_MODEL_PATH,
+        'post_rules': [
+            {
+                'class': 'face',          # 规则作用于 'face' 这个子类别
+                'max_detections': 1,          # 最多只保留 1 个检测结果
+                'strategy': 'highest_confidence' # 保留策略：选择置信度最高的那个
+            }
+        ],
         'sub_config': {
             "face": {
                 'model_path': YOLO_EMOTION_MODEL_PATH,
@@ -50,6 +57,19 @@ RECURSIVE_DETECTION_CONFIG = {
     },
     "laptop": {
         'model_path': YOLO_WINDOWSELEMENT_MODEL_PATH,
+        # 新增：定义后处理规则
+        'post_rules': [
+            {
+                'class': 'activewindow',          # 规则作用于 'keyboard' 这个子类别
+                'max_detections': 1,          # 最多只保留 1 个检测结果
+                'strategy': 'highest_confidence' # 保留策略：选择置信度最高的那个
+            },
+            {
+                'class': 'keyboard',
+                'max_detections': 1,
+                'strategy': 'highest_confidence'
+            }
+        ],
         'sub_config': {}
     },"Laptop": {
         'model_path': YOLO_WINDOWSELEMENT_MODEL_PATH,

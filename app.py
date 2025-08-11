@@ -1,178 +1,204 @@
-# app.py
-# 这是一个为硬件（如树莓派）设计的完整应用程序脚本。
-# 它使用 picamera2 库从摄像头捕获图像，
-# 然后运行一个支持递归检测的视觉分析流水线，
-# 最后通过命令行界面与大型语言模型进行交互式问答。
+# app.py (Hardware Deployment Version)
+#
+# This is the final, consolidated script designed for hardware deployment (e.g., Raspberry Pi).
+# It incorporates all recent features:
+# 1. Multi-Model Fusion: Combines results from different YOLO models for initial detection.
+# 2. OCR Analysis: Extracts text from specified object classes.
+# 3. Recursive Analysis: Performs detailed sub-detection on specified objects.
+# 4. Post-Processing Rules: Applies logic like "one keyboard per laptop".
+# 5. Hardware/Simulation Mode: Uses picamera2 if available, otherwise falls back to loading a local image file.
 
 import cv2
 import os
 import json
 import sys
 from datetime import datetime
-from ultralytics import YOLO
 
-# 尝试导入硬件特定的库，如果失败则给出提示
+# Attempt to import hardware-specific library; set a flag accordingly.
 try:
     from picamera2 import Picamera2
+    import time
     IS_HARDWARE = True
+    print("picamera2 library found. Running in HARDWARE mode.")
 except ImportError:
-    print("警告: picamera2 库未找到。程序将以模拟模式运行，加载本地文件。")
+    print("WARNING: picamera2 library not found. Running in SIMULATION mode (loading local image).")
     IS_HARDWARE = False
 
-# 导入重构后的项目模块和配置
+# Import all necessary modules and configurations from the backend.
 from backend import config
 from backend.vision.pipelines import VisionPipeline
-from backend.vision.analyzers import ColorAnalyzer, RecursiveYOLOAnalyzer
+from backend.vision.analyzers import (
+    ColorAnalyzer, 
+    RecursiveYOLOAnalyzer, 
+    GridPositionAnalyzer, 
+    OCRAnalyzer
+)
 from backend.llm.formatting import format_detections_as_json_for_llm
 from backend.llm.interaction import answer_question_with_deepseek
 
-class ImageProcessor:
+
+class Application:
     """
-    封装了图像捕获、视觉分析和问答交互的完整流程。
+    Encapsulates the entire application flow from image capture to interactive Q&A.
     """
     def __init__(self):
-        """初始化配置、加载模型并构建视觉处理流水线。"""
-        print("正在加载主YOLO模型...")
+        """
+        Initializes configurations, loads models, and constructs the vision pipeline.
+        """
+        print("\nInitializing application...")
+        
+        # We need the image dimensions to initialize the GridPositionAnalyzer.
+        # We'll get them by pre-loading the fallback image.
         try:
-            self.yolo_model = YOLO(config.YOLO_COCO_SEGMENTATION_MODEL_PATH)
-            print(f"主模型 '{config.YOLO_COCO_SEGMENTATION_MODEL_PATH}' 加载成功。")
+            temp_img = cv2.imread(config.IMAGE_PATH)
+            if temp_img is None:
+                raise FileNotFoundError(f"Fallback image not found at {config.IMAGE_PATH}")
+            self.image_height, self.image_width, _ = temp_img.shape
+            print(f"Image dimensions set to: {self.image_width}x{self.image_height}")
         except Exception as e:
-            print(f"错误: 无法加载主YOLO模型: {e}")
+            print(f"ERROR: Could not load fallback image to determine dimensions. Exiting. Error: {e}")
             sys.exit(1)
+
+        # 1. Initialize all individual analyzers.
+        print("Initializing analyzers...")
+        color_analyzer = ColorAnalyzer()
+        ocr_analyzer = OCRAnalyzer()
+        grid_analyzer = GridPositionAnalyzer(self.image_width, self.image_height)
         
-        # 定义将在每个检测层级应用的基础分析器
-        base_analyzers = [
-            ColorAnalyzer(),
-        ]
-        
-        # 创建递归分析器的实例，它将协调所有的分层检测
+        # 2. The RecursiveYOLOAnalyzer now orchestrates other analyzers that run on each detection.
         recursive_analyzer = RecursiveYOLOAnalyzer(
             initial_config=config.RECURSIVE_DETECTION_CONFIG,
-            other_analyzers=base_analyzers
+            other_analyzers=[color_analyzer, ocr_analyzer] # Color and OCR run on every relevant object
         )
-        
-        # 创建最终的视觉流水线实例
-        self.pipeline = VisionPipeline(self.yolo_model, recursive_analyzer)
-        print("视觉流水线构建完成。")
+
+        # 3. Construct the main vision pipeline.
+        # The pipeline now internally handles model loading based on the config.
+        self.pipeline = VisionPipeline(
+            recursive_analyzer=recursive_analyzer,
+            post_analyzers=[grid_analyzer] # Grid position is a post-processing step on the final list
+        )
+        print("Vision pipeline constructed successfully.")
 
     def capture_image(self):
         """
-        从硬件摄像头捕获图像。如果不在硬件上运行，则加载本地文件作为替代。
+        Captures an image from the camera if on hardware, otherwise loads from a file.
         """
-        capture_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
         if IS_HARDWARE:
-            print("正在从Picamera2摄像头捕获图像...")
+            print("\nCapturing image from PiCamera...")
             try:
                 picam2 = Picamera2()
-                # 配置预览和捕获分辨率
-                config_still = picam2.create_still_configuration(main={"size": (1280, 720)}, lores={"size": (640, 480)}, display="lores")
-                picam2.configure(config_still)
+                # Configure the camera for high-resolution still capture
+                capture_config = picam2.create_still_configuration(main={"size": (1920, 1080)})
+                picam2.configure(capture_config)
                 picam2.start()
-                
-                # 捕获为NumPy数组 (RGB格式)
-                image_rgb = picam2.capture_array()
+                time.sleep(2) # Allow time for sensor to adjust
+                image_array = picam2.capture_array()
                 picam2.stop()
-                picam2.close()
-
-                # 将RGB转换为OpenCV使用的BGR格式
-                image_bgr = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
-                
-                # 保存捕获的图像
-                cv2.imwrite(config.IMAGE_PATH, image_bgr)
-                print(f"图像成功捕获并保存至: {config.IMAGE_PATH}")
-                
-                return image_bgr, capture_time
+                # Convert RGB (from PiCamera) to BGR (for OpenCV)
+                image_bgr = cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR)
+                print("Image captured successfully.")
+                return image_bgr, datetime.now()
             except Exception as e:
-                print(f"错误: 摄像头捕获失败: {e}")
+                print(f"ERROR: Failed to capture image from camera: {e}")
                 return None, None
         else:
-            # 模拟模式：加载本地文件
-            print(f"模拟捕获模式: 正在从 '{config.IMAGE_PATH}' 加载图像...")
+            print(f"\nLoading image from file: {config.IMAGE_PATH}")
             image_bgr = cv2.imread(config.IMAGE_PATH)
             if image_bgr is None:
-                print(f"错误: 无法从 {config.IMAGE_PATH} 加载图像。请确保文件存在。")
+                print(f"ERROR: Failed to load image from {config.IMAGE_PATH}")
                 return None, None
-            print("图像加载成功。")
-            return image_bgr, capture_time
+            print("Image loaded successfully.")
+            return image_bgr, datetime.now()
 
-    def process_and_get_results(self, image_bgr, capture_time):
-        """运行完整的视觉流水线并格式化结果。"""
-        if image_bgr is None:
-            return None, None
-
-        print("正在运行视觉分析流水线...")
-        detections, annotated_image = self.pipeline.run(image_bgr)
+    def process_image(self, image_bgr, capture_time):
+        """
+        Runs the full vision pipeline on the provided image.
+        """
+        print("\nRunning vision pipeline... (This may take a moment)")
+        start_time = time.time()
         
+        all_detections, annotated_image = self.pipeline.run(image_bgr)
+        
+        end_time = time.time()
+        print(f"Pipeline finished in {end_time - start_time:.2f} seconds.")
+        
+        # Save the annotated image for review
+        output_path = os.path.join(os.path.dirname(config.IMAGE_PATH), "annotated_output.jpg")
+        cv2.imwrite(output_path, annotated_image)
+        print(f"Annotated image saved to: {output_path}")
+        
+        # Format the results into JSON for the LLM
         json_detections = format_detections_as_json_for_llm(
-            detections, image_bgr.shape, capture_time
+            all_detections, image_bgr.shape, capture_time.strftime("%Y-%m-%d %H:%M:%S")
         )
-        print("流水线处理完成。")
-        return json_detections, annotated_image
-
-    def save_annotated_image(self, annotated_image):
-        """将带标注的图像保存到文件，而不是尝试在窗口中显示。"""
-        if annotated_image is not None:
-            save_path = 'backend/data/annotated_image.jpg'
-            try:
-                cv2.imwrite(save_path, annotated_image)
-                print(f"已标注的图像已保存至: {save_path}")
-            except Exception as e:
-                print(f"错误: 保存已标注图像失败: {e}")
-
-    def question_loop(self, json_detections):
-        """处理用户在命令行中的问答循环。"""
-        if json_detections is None:
-            print("没有检测结果可供提问。")
-            return
-
-        response_log = []
         
-        print("\n--- 问答环节 ---")
-        print("请输入您关于图像的问题 (输入 'quit' 退出):")
+        return json_detections
+
+    def interactive_qa(self, json_detections):
+        """
+        Starts an interactive command-line Q&A session with the LLM.
+        """
+        print("\n" + "="*50)
+        print("AI Vision Assistant Ready. Ask me about the image.")
+        print("   Type your question and press Enter. Type 'exit' or 'quit' to finish.")
+        print("="*50)
+        
+        response_log = []
+
         while True:
-            question = input("问题: ").strip()
-            if question.lower() == 'quit':
-                try:
-                    with open(config.RESPONSE_LOG_PATH, 'w', encoding='utf-8') as f:
-                        json.dump(response_log, f, indent=2, ensure_ascii=False)
-                    print(f"问答日志已保存至: {config.RESPONSE_LOG_PATH}")
-                except Exception as e:
-                    print(f"错误: 保存日志文件失败: {e}")
-                break
-            if not question:
-                continue
-            
-            print("正在生成回答...")
-            final_answer, full_response ,metrics = answer_question_with_deepseek(
-                json_detections, question, config.OLLAMA_API_URL, config.DEEPSEEK_MODEL_NAME
-            )
-            print(f"回答: {final_answer}")
-            print(f"性能: 时间={metrics.get('inference_time', 0):.2f}s, "
-                  f"内存={metrics.get('memory_mb', 0):.2f}MB, "
-                  f"状态={metrics.get('status', 'unknown')}\n")
-            
-            response_log.append({
-                "question": question, 
-                "answer": final_answer, 
-                "full_response": full_response,
-                "metrics": metrics,
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            })
+            try:
+                question = input("> ")
+                if question.lower() in ['exit', 'quit']:
+                    break
+                if not question:
+                    continue
+                
+                print("Thinking...")
+                final_answer, full_response, metrics = answer_question_with_deepseek(
+                    json_detections, question, config.OLLAMA_API_URL, config.DEEPSEEK_MODEL_NAME
+                )
+                print(f"\nAnswer: {final_answer}\n")
+                
+                response_log.append({
+                    "question": question, 
+                    "answer": final_answer, 
+                    "full_response": full_response,
+                    "metrics": metrics,
+                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                })
+
+            except (KeyboardInterrupt, EOFError):
+                break # Allow exiting with Ctrl+C or Ctrl+D
+        
+        # Save the conversation log
+        try:
+            with open(config.RESPONSE_LOG_PATH, 'w', encoding='utf-8') as f:
+                json.dump(response_log, f, indent=2, ensure_ascii=False)
+            print(f"\nQ&A log saved to: {config.RESPONSE_LOG_PATH}")
+        except Exception as e:
+            print(f"ERROR: Could not save log file: {e}")
 
     def run(self):
-        """执行从捕获到问答的完整主流程。"""
+        """
+        Executes the main application flow.
+        """
         image_bgr, capture_time = self.capture_image()
         if image_bgr is None:
-            print("程序因图像获取失败而退出。")
+            print("\nApplication exiting due to image acquisition failure.")
             return
         
-        json_detections, annotated_image = self.process_and_get_results(image_bgr, capture_time)
+        json_detections = self.process_image(image_bgr, capture_time)
         
-        self.save_annotated_image(annotated_image)
+        # Save the generated JSON for debugging purposes
+        json_output_path = os.path.join(os.path.dirname(config.IMAGE_PATH), "detection_results.json")
+        with open(json_output_path, 'w', encoding='utf-8') as f:
+            f.write(json_detections)
+        print(f"Detection JSON saved to: {json_output_path}")
         
-        self.question_loop(json_detections)
+        self.interactive_qa(json_detections)
+        print("\nGoodbye!")
+
 
 if __name__ == "__main__":
-    processor = ImageProcessor()
-    processor.run()
+    app = Application()
+    app.run()
