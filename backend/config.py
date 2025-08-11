@@ -15,6 +15,22 @@ METADATA_PATH = 'backend/data/capture_metadata.json'
 IMAGE_PATH = 'backend/data/study-desk.jpg'
 RESPONSE_LOG_PATH = 'backend/data/response_log.json'
 
+# 新增：多模型融合检测配置
+MULTI_MODEL_DETECTION_CONFIG = [
+    {
+        # 第一个模型：YOLOv11官方分割模型
+        'model_path': YOLO_COCO_SEGMENTATION_MODEL_PATH, # <-- 替换成您的官方模型路径
+        # 从这个模型中，我们只保留这些通用类别
+        'classes_to_keep': ['person', 'bus', 'stop sign', 'handbag', 'cup', 'chair', 'couch', 'dinning table', 'laptop', 'mouse', 'keyboard', 'cell phone'] # <-- 根据您的需求修改
+    },
+    {
+        # 第二个模型：书桌物品检测模型
+        'model_path': YOLO_STUDYDESKITEM_MODEL_PATH, # <-- 替换成您的书桌模型路径
+        # 从这个模型中，我们只保留这些它更擅长的特定类别
+        'classes_to_keep': ['Apple-Pencil', 'Gag', 'Calculator', 'Charging-cable', 'Earphones', 'Keyboard', 'Keys', 'Laptoop', 'Markers', 'Mobile phone', 'Mouse', 'PC', 'Screen', 'Pen', 'StudentID_card', 'Wallet', 'Watch', 'Water bottle', 'iPad-Air', 'iPad-Pro'] # <-- 根据您的需求修改
+    }
+]
+
 # --- 分层检测配置 ---
 # 定义哪个主类别应该触发哪个YOLO模型进行二次检测
 RECURSIVE_DETECTION_CONFIG = {
@@ -65,11 +81,6 @@ COLOR_NAMES = {
 # --- OCR 配置 ---
 # 在这个列表中的类别，将会触发OCR文字识别
 OCR_ENABLED_CLASSES = [
-    "Arduino-Mega",
-    "Arduino-Nano",
-    "Arduino-Uno",
-    "ESP32",
-    "ESP32-CAM",
-    "bus"
+    'laptop','mouse','keyboard','Screen'
     # 您未来可以添加其他类别，例如 'book', 'sign', 'license_plate' 等
 ]

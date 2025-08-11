@@ -50,3 +50,37 @@ def get_initial_detections(image_bgr: np.ndarray, yolo_model: YOLO) -> list[Dete
             detections.append(detection_obj)
             
     return detections
+
+
+def get_combined_detections(image_bgr: np.ndarray, multi_model_config: list, model_cache: dict) -> list[Detection]:
+    """
+    使用多个模型进行检测，并根据配置筛选和合并结果。
+    """
+    from ultralytics import YOLO
+
+    all_filtered_detections = []
+
+    for config in multi_model_config:
+        model_path = config['model_path']
+        classes_to_keep = set(config['classes_to_keep']) # 使用set以提高查找效率
+
+        # 从缓存加载或新建模型实例
+        if model_path not in model_cache:
+            print(f"Loading model for combination: {model_path}")
+            model_cache[model_path] = YOLO(model_path)
+        yolo_model = model_cache[model_path]
+
+        if yolo_model is None:
+            continue
+        
+        # 使用现有函数进行初步检测
+        current_detections = get_initial_detections(image_bgr, yolo_model)
+        
+        # 根据 classes_to_keep 列表进行筛选
+        filtered_detections = [
+            d for d in current_detections if d.class_name in classes_to_keep
+        ]
+        
+        all_filtered_detections.extend(filtered_detections)
+        
+    return all_filtered_detections

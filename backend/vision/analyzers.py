@@ -109,7 +109,7 @@ class GridPositionAnalyzer(Analyzer):
             ["bottom-left", "bottom-center", "bottom-right"]
         ]
 
-    def analyze(self, detection: Detection):
+    def analyze(self, detection: list[Detection]):
         """
         Determines the grid position of the detection and updates it.
         :param detection: The Detection object to analyze.
