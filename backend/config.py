@@ -8,6 +8,7 @@ YOLO_EMOTION_MODEL_PATH = 'backend/resource/models/emotion.pt' # 情感分析模
 # YOLO_PCB_MODEL_PATH = 'backend/resource/models/circuit-board.pt'
 YOLO_PCB_MODEL_PATH = 'backend/resource/models/pcb.pt'
 YOLO_STUDYDESKITEM_MODEL_PATH = 'backend/resource/models/study-desk-item.pt' # 学习桌物品检测模型
+YOLO_WINDOWSELEMENT_MODEL_PATH = 'backend/resource/models/windows-element.pt' # 窗口元素检测模型
 
 OLLAMA_API_URL = 'http://localhost:11434/api/generate'
 DEEPSEEK_MODEL_NAME = 'deepseek-r1:8b'
@@ -47,24 +48,14 @@ RECURSIVE_DETECTION_CONFIG = {
                 }
             }
     },
-    "Arduino-Mega": {
-        'model_path': YOLO_PCB_MODEL_PATH,
+    "laptop": {
+        'model_path': YOLO_WINDOWSELEMENT_MODEL_PATH,
         'sub_config': {}
-    },
-    "Arduino-Nano": {
-        'model_path': YOLO_PCB_MODEL_PATH,
+    },"Laptop": {
+        'model_path': YOLO_WINDOWSELEMENT_MODEL_PATH,
         'sub_config': {}
-    },
-    "Arduino-Uno": {
-        'model_path': YOLO_PCB_MODEL_PATH,
-        'sub_config': {}
-    },
-    "ESP32": {
-        'model_path': YOLO_PCB_MODEL_PATH,
-        'sub_config': {}
-    },
-    "ESP32-CAM": {
-        'model_path': YOLO_PCB_MODEL_PATH,
+    },"Screen": {
+        'model_path': YOLO_WINDOWSELEMENT_MODEL_PATH,
         'sub_config': {}
     }
 }
