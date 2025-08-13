@@ -1,0 +1,95 @@
+{
+  "image_height": 1080,
+  "image_width": 810,
+  "capture_time": "2025-08-13 14:54:02",
+  "detections": [
+    {
+      "class": "person",
+      "confidence": 0.8777948021888733,
+      "bbox": [
+        670,
+        388,
+        809,
+        877
+      ],
+      "color_name": "blue",
+      "sub_detections": [],
+      "position": "middle-right"
+    },
+    {
+      "class": "person",
+      "confidence": 0.8602193593978882,
+      "bbox": [
+        48,
+        396,
+        242,
+        904
+      ],
+      "color_name": "green",
+      "sub_detections": [
+        {
+          "class": "face",
+          "confidence": 0.5553609728813171,
+          "bbox": [
+            108,
+            404,
+            151,
+            472
+          ],
+          "color_name": "green",
+          "sub_detections": [
+            {
+              "class": "surprise",
+              "confidence": 0.5283327102661133,
+              "bbox": [
+                108,
+                404,
+                150,
+                471
+              ]
+            }
+          ]
+        }
+      ],
+      "position": "middle-left"
+    },
+    {
+      "class": "person",
+      "confidence": 0.8412283658981323,
+      "bbox": [
+        222,
+        407,
+        344,
+        861
+      ],
+      "color_name": "blue",
+      "sub_detections": [],
+      "position": "middle-center"
+    },
+    {
+      "class": "bus",
+      "confidence": 0.8381741642951965,
+      "bbox": [
+        2,
+        227,
+        800,
+        722
+      ],
+      "color_name": "blue",
+      "position": "middle-center"
+    },
+    {
+      "class": "person",
+      "confidence": 0.4119418263435364,
+      "bbox": [
+        0,
+        551,
+        77,
+        875
+      ],
+      "color_name": "green",
+      "sub_detections": [],
+      "position": "middle-left"
+    }
+  ]
+}

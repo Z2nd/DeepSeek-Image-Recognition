@@ -13,7 +13,7 @@ YOLO_WINDOWSELEMENT_MODEL_PATH = 'backend/resource/models/windows-element.pt' # 
 OLLAMA_API_URL = 'http://localhost:11434/api/generate'
 DEEPSEEK_MODEL_NAME = 'deepseek-r1:8b'
 METADATA_PATH = 'backend/data/capture_metadata.json'
-IMAGE_PATH = 'backend/data/study-desk.jpg'
+IMAGE_PATH = 'backend/data/bus.jpg'
 RESPONSE_LOG_PATH = 'backend/data/response_log.json'
 
 # 新增：多模型融合检测配置
@@ -24,12 +24,12 @@ MULTI_MODEL_DETECTION_CONFIG = [
         # 从这个模型中，我们只保留这些通用类别
         'classes_to_keep': ['person', 'bus', 'stop sign', 'handbag', 'cup', 'chair', 'couch', 'dinning table', 'laptop', 'mouse', 'keyboard', 'cell phone'] # <-- 根据您的需求修改
     },
-    {
-        # 第二个模型：书桌物品检测模型
-        'model_path': YOLO_STUDYDESKITEM_MODEL_PATH, # <-- 替换成您的书桌模型路径
-        # 从这个模型中，我们只保留这些它更擅长的特定类别
-        'classes_to_keep': ['Apple-Pencil', 'Gag', 'Calculator', 'Charging-cable', 'Earphones', 'Keyboard', 'Keys', 'Laptoop', 'Markers', 'Mobile phone', 'Mouse', 'PC', 'Screen', 'Pen', 'StudentID_card', 'Wallet', 'Watch', 'Water bottle', 'iPad-Air', 'iPad-Pro'] # <-- 根据您的需求修改
-    }
+    # {
+    #     # 第二个模型：书桌物品检测模型
+    #     'model_path': YOLO_STUDYDESKITEM_MODEL_PATH, # <-- 替换成您的书桌模型路径
+    #     # 从这个模型中，我们只保留这些它更擅长的特定类别
+    #     'classes_to_keep': ['Apple-Pencil', 'Gag', 'Calculator', 'Charging-cable', 'Earphones', 'Keyboard', 'Keys', 'Laptoop', 'Markers', 'Mobile phone', 'Mouse', 'PC', 'Screen', 'Pen', 'StudentID_card', 'Wallet', 'Watch', 'Water bottle', 'iPad-Air', 'iPad-Pro'] # <-- 根据您的需求修改
+    # }
 ]
 
 # --- 分层检测配置 ---

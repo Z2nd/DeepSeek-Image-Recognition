@@ -2,17 +2,77 @@
 import json
 import requests
 import time
-import psutil
-import re
+import os
+from transformers import AutoTokenizer
 
-def answer_question_with_deepseek(json_detections, question, ollama_api_url, model_name, max_retries=3, retry_delay=2):
-    """Generate answers to questions using DeepSeek."""
-    metrics = {"question": question, "start_time": time.time(), "status": "pending"}
-    process = psutil.Process()
+# --- 配置与全局变量 ---
+METRICS_FILE_PATH = os.path.join(os.path.dirname(__file__), 'llm_metrics.json')
+# 我们假设一个平均回答长度，这是预测中最不确定的部分，可以根据经验调整
+ESTIMATED_COMPLETION_TOKENS = 500 
+# 为模型加载、网络延迟等设置一个基础延迟（秒）
+BASE_LATENCY_SECONDS = 1.5 
+
+# --- Tokenizer 初始化 ---
+try:
+    print("Initializing tokenizer for prompt analysis...")
+    # 使用一个与Llama/DeepSeek兼容的开源tokenizer
+    tokenizer = AutoTokenizer.from_pretrained('NousResearch/Llama-2-7b-chat-hf')
+    print("Tokenizer initialized.")
+except Exception as e:
+    print(f"Warning: Could not initialize tokenizer. Prompt token counts will be estimated. Error: {e}")
+    tokenizer = None
+
+# --- 性能追踪器 ---
+class MetricsTracker:
+    def __init__(self, filepath):
+        self.filepath = filepath
+        self.metrics = {
+            "total_runs": 0,
+            "avg_tokens_per_second": 2.0  # 初始的保守估计值
+        }
+        self.load()
+
+    def load(self):
+        if os.path.exists(self.filepath):
+            with open(self.filepath, 'r') as f:
+                self.metrics = json.load(f)
     
-    try:
-        prompt = (
-                f"""
+    def save(self):
+        with open(self.filepath, 'w') as f:
+            json.dump(self.metrics, f, indent=2)
+
+    def update(self, new_eval_count, new_eval_duration_ns):
+        if new_eval_duration_ns == 0:
+            return
+
+        # 计算本次运行的速度
+        current_tokens_per_sec = new_eval_count / (new_eval_duration_ns / 1_000_000_000)
+        
+        # 使用移动平均法更新平均速度，避免单次异常值影响过大
+        total = self.metrics["total_runs"]
+        avg = self.metrics["avg_tokens_per_second"]
+        new_avg = (total * avg + current_tokens_per_sec) / (total + 1)
+        
+        self.metrics["avg_tokens_per_second"] = new_avg
+        self.metrics["total_runs"] += 1
+        self.save()
+
+    def get_avg_speed(self):
+        return self.metrics["avg_tokens_per_second"]
+
+# 初始化追踪器实例
+tracker = MetricsTracker(METRICS_FILE_PATH)
+
+# --- 核心功能函数 ---
+def _build_prompt(json_detections, question):
+    """辅助函数：构建完整的prompt字符串。"""
+    detections_data = json.loads(json_detections)
+    # 此处省略了原有的is_sequence判断，可以根据需要加回来
+    return (
+        "You are an AI assistant that answers questions about an image based on structured detection data. "
+        f"The image is {detections_data.get('image_height')}x{detections_data.get('image_width')} pixels, "
+        f"captured at {detections_data.get('capture_time')}.\n"
+        f"""
 You are an expert visual analyst. Your task is to describe an image based on the provided JSON data.
 
 Detected objects data:
@@ -27,34 +87,60 @@ Rules:
 Based on these rules, answer the following user question:
 Question: {question}
 """
-            )
+    )
 
-        for attempt in range(max_retries):
-            try:
-                start_time = time.time()
-                payload = {"model": model_name, "prompt": prompt, "stream": False}
-                response = requests.post(ollama_api_url, json=payload, timeout=1200)
-                response.raise_for_status()
-                
-                response_json = response.json()
-                full_response = response_json.get("response", "No answer generated.").strip()
-                final_answer = re.sub(r'<think>.*?</think>', ' ', full_response, flags=re.DOTALL)
-                
-                metrics.update({
-                    "inference_time": time.time() - start_time,
-                    "total_duration": response_json.get("total_duration", 0),
-                    "load_duration": response_json.get("load_duration", 0),
-                    "memory_mb": process.memory_info().rss / (1024 * 1024),
-                    "retry_attempts": attempt, "status": "success"
-                })
-                return final_answer, full_response, metrics
-            except (requests.exceptions.RequestException) as e:
-                print(f"API attempt {attempt + 1}/{max_retries} failed: {str(e)}")
-                if attempt < max_retries - 1:
-                    time.sleep(retry_delay)
+def predict_response_time(json_detections, question):
+    """根据历史数据预测LLM响应时间。"""
+    prompt = _build_prompt(json_detections, question)
+    
+    # 1. 获取平均生成速度
+    avg_speed = tracker.get_avg_speed() # tokens/sec
+
+    # 2. 估算生成时间
+    prediction_time = ESTIMATED_COMPLETION_TOKENS / avg_speed
+
+    # 3. （可选）更精确地估算提示词处理时间
+    if tokenizer:
+        prompt_token_count = len(tokenizer.encode(prompt))
+        # 假设提示词处理速度是生成速度的5倍（通常更快）
+        prompt_eval_time = prompt_token_count / (avg_speed * 1.5)
+        prediction_time += prompt_eval_time
+
+    return prediction_time + BASE_LATENCY_SECONDS
+
+def stream_answer(json_detections, question, ollama_api_url, model_name):
+    """执行流式API调用并返回最终的性能指标。"""
+    prompt = _build_prompt(json_detections, question)
+    payload = {"model": model_name, "prompt": prompt, "stream": True}
+    
+    final_answer_chunks = []
+    run_metrics = {}
+
+    try:
+        response = requests.post(ollama_api_url, json=payload, timeout=1200, stream=True)
+        response.raise_for_status()
         
-        raise ConnectionError(f"Failed to get response from Ollama API after {max_retries} attempts.")
+        for line in response.iter_lines():
+            if line:
+                chunk = json.loads(line)
+                content = chunk.get("response", "")
+                print(content, end='', flush=True)
+                final_answer_chunks.append(content)
+                
+                if chunk.get("done"):
+                    # 捕获所有最终的性能数据
+                    run_metrics['eval_count'] = chunk.get('eval_count', 0)
+                    run_metrics['eval_duration'] = chunk.get('eval_duration', 0)
+                    run_metrics['total_duration'] = chunk.get('total_duration', 0)
+                    run_metrics['load_duration'] = chunk.get('load_duration', 0)
+        
+        full_response = "".join(final_answer_chunks)
+        # 更新追踪器
+        if run_metrics.get('eval_count'):
+            tracker.update(run_metrics['eval_count'], run_metrics['eval_duration'])
 
-    except Exception as e:
-        metrics.update({"status": "failed", "error": str(e)})
-        return f"Error: {str(e)}", {}, metrics
+        return full_response, run_metrics
+
+    except requests.exceptions.RequestException as e:
+        print(f"\nError during API call: {e}")
+        return f"Error: {str(e)}", {}

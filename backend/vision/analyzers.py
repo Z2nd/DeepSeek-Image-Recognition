@@ -18,7 +18,7 @@ class ColorAnalyzer(Analyzer):
             mask=detection.mask,
             color_space='HSL'
         )
-        detection.add_feature('dominant_color_hsv', dominant_color)
+        # detection.add_feature('dominant_color_hsv', dominant_color)
         detection.add_feature('color_name', color_name)
 
 class RecursiveYOLOAnalyzer(Analyzer):
