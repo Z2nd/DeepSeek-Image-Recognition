@@ -1,18 +1,1 @@
-[
-  {
-    "question": "什么？",
-    "answer": " \n在这张图片中，检测到以下对象：  \n\n1. **蓝色人物**（置信度高）  \n   - 范围：从(368, 403)到(551, 633)的区域。  \n\n2. **绿色人物**（面部表情惊讶）  \n   - 范围：从(130, 168)到(1068, 713)的区域，其中面部检测显示该人的表情为\"惊讶\"（置信度非常高）。  \n\n3. **绿色电视**  \n   - 范围：从(0, 86)到(122, 487)的区域。  \n\n4. **绿色人物**（无子检测）  \n   - 范围：从(0, 421)到(383, 707)的区域，但未检测到面部或其他细节信息。  \n\n5. **青色笔记本电脑**\n   - 范围: 从 (1232, 562) 到 (1279, 715) 的区域.\n\n这些对象被检测并分类为人物、电视和笔记本电脑，并提供了它们在图像中的位置信息。",
-    "full_response": "<think>\nHmm, the user is asking about an image but only provided the phrase \"什么？\" which means \"what?\" in Chinese. This seems incomplete or possibly a test query since no actual question follows.\n\nLooking at the detection data they shared - there are two people (one blue with high confidence, one green person whose face shows surprise), a TV, and a laptop. The user might be expecting me to analyze this image data but didn't specify what aspect of it they want information about.\n\nWithout any specific questions or context from the user, I can only make an educated guess that they're asking about the objects in the image since those are the most notable elements present. However, their query is extremely vague - just \"what\" without anything else would be challenging to answer meaningfully.\n\nI should provide a concise response listing what was detected rather than speculating on what exactly was being asked.\n</think>\n在这张图片中，检测到以下对象：  \n\n1. **蓝色人物**（置信度高）  \n   - 范围：从(368, 403)到(551, 633)的区域。  \n\n2. **绿色人物**（面部表情惊讶）  \n   - 范围：从(130, 168)到(1068, 713)的区域，其中面部检测显示该人的表情为\"惊讶\"（置信度非常高）。  \n\n3. **绿色电视**  \n   - 范围：从(0, 86)到(122, 487)的区域。  \n\n4. **绿色人物**（无子检测）  \n   - 范围：从(0, 421)到(383, 707)的区域，但未检测到面部或其他细节信息。  \n\n5. **青色笔记本电脑**\n   - 范围: 从 (1232, 562) 到 (1279, 715) 的区域.\n\n这些对象被检测并分类为人物、电视和笔记本电脑，并提供了它们在图像中的位置信息。",
-    "metrics": {
-      "question": "什么？",
-      "start_time": 1754312089.0859694,
-      "status": "success",
-      "inference_time": 464.7290372848511,
-      "total_duration": 464718196340,
-      "load_duration": 89472600,
-      "memory_mb": 673.515625,
-      "retry_attempts": 0
-    },
-    "timestamp": "2025-08-04 14:02:33"
-  }
-]
+[]

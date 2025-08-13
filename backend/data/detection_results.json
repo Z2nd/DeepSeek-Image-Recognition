@@ -1,0 +1,402 @@
+{
+  "image_height": 1080,
+  "image_width": 1920,
+  "capture_time": "2025-08-12 16:19:04",
+  "detections": [
+    {
+      "class": "laptop",
+      "confidence": 0.9673179984092712,
+      "bbox": [
+        722,
+        242,
+        1550,
+        949
+      ],
+      "dominant_color_hsv": [
+        70.88307966919709,
+        177.0055148440127,
+        62.55705092062743
+      ],
+      "color_name": "green",
+      "sub_detections": [
+        {
+          "class": "activewindow",
+          "confidence": 0.9822177290916443,
+          "bbox": [
+            814,
+            264,
+            1406,
+            628
+          ]
+        }
+      ],
+      "position": "top-left"
+    },
+    {
+      "class": "mouse",
+      "confidence": 0.8743631839752197,
+      "bbox": [
+        386,
+        605,
+        612,
+        713
+      ],
+      "dominant_color_hsv": [
+        38.702624671915494,
+        45.8133333333345,
+        27.125459317586497
+      ],
+      "color_name": "green",
+      "position": "top-left"
+    },
+    {
+      "class": "laptop",
+      "confidence": 0.8067681789398193,
+      "bbox": [
+        1663,
+        1,
+        1918,
+        352
+      ],
+      "dominant_color_hsv": [
+        30.25500181884324,
+        82.69901513008847,
+        34.10849736604414
+      ],
+      "color_name": "yellow",
+      "sub_detections": [
+        {
+          "class": "activewindow",
+          "confidence": 0.311883807182312,
+          "bbox": [
+            1733,
+            38,
+            1917,
+            281
+          ]
+        }
+      ],
+      "position": "top-center"
+    },
+    {
+      "class": "laptop",
+      "confidence": 0.59056156873703,
+      "bbox": [
+        0,
+        1,
+        212,
+        300
+      ],
+      "dominant_color_hsv": [
+        39.565181134125766,
+        98.08234427120384,
+        26.18175471259081
+      ],
+      "color_name": "green",
+      "sub_detections": [
+        {
+          "class": "menubar",
+          "confidence": 0.6920193433761597,
+          "bbox": [
+            0,
+            215,
+            197,
+            230
+          ]
+        }
+      ],
+      "position": "top-left"
+    },
+    {
+      "class": "keyboard",
+      "confidence": 0.36003541946411133,
+      "bbox": [
+        791,
+        651,
+        1430,
+        803
+      ],
+      "dominant_color_hsv": [
+        32.862849671404405,
+        177.40685178175823,
+        26.424445744301245
+      ],
+      "color_name": "yellow",
+      "position": "top-left"
+    },
+    {
+      "class": "keyboard",
+      "confidence": 0.27510014176368713,
+      "bbox": [
+        1401,
+        463,
+        1860,
+        649
+      ],
+      "dominant_color_hsv": [
+        52.60964612652075,
+        33.12802295395013,
+        27.417110716400273
+      ],
+      "color_name": "green",
+      "position": "top-center"
+    },
+    {
+      "class": "Screen",
+      "confidence": 0.9533430933952332,
+      "bbox": [
+        9,
+        3,
+        1709,
+        298
+      ],
+      "dominant_color_hsv": [
+        54.064800829970835,
+        142.1787958137882,
+        56.21190007721412
+      ],
+      "color_name": "green",
+      "sub_detections": [
+        {
+          "class": "activewindow",
+          "confidence": 0.773928701877594,
+          "bbox": [
+            15,
+            3,
+            1700,
+            271
+          ]
+        }
+      ],
+      "position": "top-left"
+    },
+    {
+      "class": "Mouse",
+      "confidence": 0.906770646572113,
+      "bbox": [
+        0,
+        457,
+        209,
+        627
+      ],
+      "dominant_color_hsv": [
+        54.064800829970835,
+        142.1787958137882,
+        56.21190007721412
+      ],
+      "color_name": "green",
+      "position": "top-left"
+    },
+    {
+      "class": "Mouse",
+      "confidence": 0.8345463871955872,
+      "bbox": [
+        387,
+        602,
+        616,
+        714
+      ],
+      "dominant_color_hsv": [
+        54.064800829970835,
+        142.1787958137882,
+        56.21190007721412
+      ],
+      "color_name": "green",
+      "position": "top-left"
+    },
+    {
+      "class": "Watch",
+      "confidence": 0.796027660369873,
+      "bbox": [
+        0,
+        729,
+        104,
+        923
+      ],
+      "dominant_color_hsv": [
+        54.064800829970835,
+        142.1787958137882,
+        56.21190007721412
+      ],
+      "color_name": "green",
+      "position": "top-left"
+    },
+    {
+      "class": "Screen",
+      "confidence": 0.7448655366897583,
+      "bbox": [
+        814,
+        258,
+        1410,
+        647
+      ],
+      "dominant_color_hsv": [
+        54.064800829970835,
+        142.1787958137882,
+        56.21190007721412
+      ],
+      "color_name": "green",
+      "sub_detections": [
+        {
+          "class": "activewindow",
+          "confidence": 0.9886337518692017,
+          "bbox": [
+            817,
+            265,
+            1407,
+            613
+          ]
+        },
+        {
+          "class": "address bar",
+          "confidence": 0.749901294708252,
+          "bbox": [
+            836,
+            284,
+            1281,
+            299
+          ]
+        },
+        {
+          "class": "menubar",
+          "confidence": 0.7246338129043579,
+          "bbox": [
+            814,
+            603,
+            1408,
+            626
+          ]
+        },
+        {
+          "class": "address bar",
+          "confidence": 0.4818095564842224,
+          "bbox": [
+            820,
+            294,
+            1252,
+            318
+          ]
+        },
+        {
+          "class": "menubar",
+          "confidence": 0.41365188360214233,
+          "bbox": [
+            814,
+            258,
+            1408,
+            261
+          ]
+        },
+        {
+          "class": "address bar",
+          "confidence": 0.3286132514476776,
+          "bbox": [
+            941,
+            283,
+            1378,
+            298
+          ]
+        },
+        {
+          "class": "menubar",
+          "confidence": 0.32367241382598877,
+          "bbox": [
+            816,
+            602,
+            1402,
+            638
+          ]
+        },
+        {
+          "class": "tab",
+          "confidence": 0.3123127222061157,
+          "bbox": [
+            1005,
+            266,
+            1049,
+            282
+          ]
+        },
+        {
+          "class": "tab",
+          "confidence": 0.2719750702381134,
+          "bbox": [
+            900,
+            266,
+            947,
+            283
+          ]
+        }
+      ],
+      "position": "top-left"
+    },
+    {
+      "class": "PC",
+      "confidence": 0.6354155540466309,
+      "bbox": [
+        1603,
+        0,
+        1919,
+        373
+      ],
+      "dominant_color_hsv": [
+        54.064800829970835,
+        142.1787958137882,
+        56.21190007721412
+      ],
+      "color_name": "green",
+      "position": "top-center"
+    },
+    {
+      "class": "Earphones",
+      "confidence": 0.604104220867157,
+      "bbox": [
+        1827,
+        887,
+        1919,
+        1080
+      ],
+      "dominant_color_hsv": [
+        54.064800829970835,
+        142.1787958137882,
+        56.21190007721412
+      ],
+      "color_name": "green",
+      "position": "top-center"
+    },
+    {
+      "class": "Calculator",
+      "confidence": 0.4842165410518646,
+      "bbox": [
+        1405,
+        464,
+        1852,
+        646
+      ],
+      "dominant_color_hsv": [
+        54.064800829970835,
+        142.1787958137882,
+        56.21190007721412
+      ],
+      "color_name": "green",
+      "position": "top-center"
+    },
+    {
+      "class": "PC",
+      "confidence": 0.46300971508026123,
+      "bbox": [
+        0,
+        0,
+        214,
+        297
+      ],
+      "dominant_color_hsv": [
+        54.064800829970835,
+        142.1787958137882,
+        56.21190007721412
+      ],
+      "color_name": "green",
+      "position": "top-left"
+    }
+  ]
+}
