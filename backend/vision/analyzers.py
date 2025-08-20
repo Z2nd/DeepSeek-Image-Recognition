@@ -85,41 +85,53 @@ class RecursiveYOLOAnalyzer(Analyzer):
                     if 'post_rules' in sub_config_node:
                         rules = sub_config_node.get('post_rules', [])
                         
-                        # 按类别对子检测结果进行分组
-                        grouped_sub_detections = {}
-                        for sub_d in sub_detections:
-                            grouped_sub_detections.setdefault(sub_d.class_name, []).append(sub_d)
+                        # 检查是否存在通配符规则
+                        wildcard_rule = next((rule for rule in rules if rule.get('class') == '*'), None)
 
-                        final_sub_detections = []
-                        processed_classes = set()
+                        if wildcard_rule:
+                            # --- A. 如果有通配符规则，则对所有子检测统一处理 ---
+                            max_detections = wildcard_rule.get('max_detections', -1)
+                            strategy = wildcard_rule.get('strategy', 'highest_confidence')
 
-                        # 应用规则
-                        for rule in rules:
-                            rule_class = rule['class']
-                            if rule_class in grouped_sub_detections:
-                                processed_classes.add(rule_class)
-                                class_detections = grouped_sub_detections[rule_class]
-                                
-                                max_detections = rule.get('max_detections', -1)
-                                strategy = rule.get('strategy', 'highest_confidence')
-
-                                if max_detections != -1 and len(class_detections) > max_detections:
-                                    if strategy == 'highest_confidence':
-                                        # 按置信度降序排序
-                                        class_detections.sort(key=lambda d: d.confidence, reverse=True)
-                                    # 只保留前 max_detections 个结果
-                                    final_sub_detections.extend(class_detections[:max_detections])
-                                else:
-                                    final_sub_detections.extend(class_detections)
+                            if max_detections != -1 and len(sub_detections) > max_detections:
+                                if strategy == 'highest_confidence':
+                                    # 按置信度对所有子检测进行降序排序
+                                    sub_detections.sort(key=lambda d: d.confidence, reverse=True)
+                                # 只保留置信度最高的N个结果
+                                sub_detections = sub_detections[:max_detections]
                         
-                        # 将没有应用规则的类别重新加回去
-                        for class_name, dets in grouped_sub_detections.items():
-                            if class_name not in processed_classes:
-                                final_sub_detections.extend(dets)
-                        
-                        # 用经过规则筛选的列表替换原始的子检测列表
-                        sub_detections = final_sub_detections
-                    
+                        else:
+                            # --- B. 如果没有通配符规则，则执行原有的按类别处理逻辑 ---
+                            grouped_sub_detections = {}
+                            for sub_d in sub_detections:
+                                grouped_sub_detections.setdefault(sub_d.class_name, []).append(sub_d)
+
+                            final_sub_detections = []
+                            processed_classes = set()
+
+                            # 应用规则
+                            for rule in rules:
+                                rule_class = rule['class']
+                                if rule_class in grouped_sub_detections:
+                                    processed_classes.add(rule_class)
+                                    class_detections = grouped_sub_detections[rule_class]
+                                    
+                                    max_detections = rule.get('max_detections', -1)
+                                    strategy = rule.get('strategy', 'highest_confidence')
+
+                                    if max_detections != -1 and len(class_detections) > max_detections:
+                                        if strategy == 'highest_confidence':
+                                            class_detections.sort(key=lambda d: d.confidence, reverse=True)
+                                        final_sub_detections.extend(class_detections[:max_detections])
+                                    else:
+                                        final_sub_detections.extend(class_detections)
+                            
+                            # 将没有应用规则的类别重新加回去
+                            for class_name, dets in grouped_sub_detections.items():
+                                if class_name not in processed_classes:
+                                    final_sub_detections.extend(dets)
+                            
+                            sub_detections = final_sub_detections
                     detection.add_feature('sub_detections', sub_detections)
                     
                     # --- 修正：准备下一轮递归的kwargs ---

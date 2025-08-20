@@ -20,6 +20,10 @@ except ImportError:
     # print("WARNING: picamera2 library not found. Running in SIMULATION mode (loading local image).")
     IS_HARDWARE = False
 
+# ------------ TESTING MODE ------------
+# IS_HARDWARE = False
+# --------------------------------------
+
 # Import all necessary modules and configurations from the backend.
 from backend import config
 from backend.vision.pipelines import VisionPipeline

@@ -2,18 +2,18 @@
 import cv2
 import numpy as np
 from ultralytics import YOLO
-from .core import Detection # 导入新的Detection类
+from .core import Detection
 
 def get_initial_detections(image_bgr: np.ndarray, yolo_model: YOLO) -> list[Detection]:
     """
-    仅执行初始的YOLO检测和分割，返回一个Detection对象列表。
+    Perform initial YOLO detection and segmentation, returning a list of Detection objects.
 
     Args:
-        image_bgr (np.ndarray): BGR格式的输入图像。
-        yolo_model (YOLO): 已加载的YOLO模型。
+        image_bgr (np.ndarray): Input image in BGR format.
+        yolo_model (YOLO): Loaded YOLO model.
 
     Returns:
-        list[Detection]: 包含基础信息的Detection对象列表。
+        list[Detection]: List of Detection objects containing basic information.
     """
     detections = []
     if yolo_model is None:
@@ -54,7 +54,7 @@ def get_initial_detections(image_bgr: np.ndarray, yolo_model: YOLO) -> list[Dete
 
 def get_combined_detections(image_bgr: np.ndarray, multi_model_config: list, model_cache: dict) -> list[Detection]:
     """
-    使用多个模型进行检测，并根据配置筛选和合并结果。
+    Perform detection using multiple models, filter and combine results based on configuration.
     """
     from ultralytics import YOLO
 
@@ -62,9 +62,9 @@ def get_combined_detections(image_bgr: np.ndarray, multi_model_config: list, mod
 
     for config in multi_model_config:
         model_path = config['model_path']
-        classes_to_keep = set(config['classes_to_keep']) # 使用set以提高查找效率
+        classes_to_keep = set(config['classes_to_keep']) 
 
-        # 从缓存加载或新建模型实例
+        # Load model instance from cache or create a new one
         if model_path not in model_cache:
             print(f"Loading model for combination: {model_path}")
             model_cache[model_path] = YOLO(model_path)
@@ -73,10 +73,10 @@ def get_combined_detections(image_bgr: np.ndarray, multi_model_config: list, mod
         if yolo_model is None:
             continue
         
-        # 使用现有函数进行初步检测
+        # Use the existing function for initial detection
         current_detections = get_initial_detections(image_bgr, yolo_model)
         
-        # 根据 classes_to_keep 列表进行筛选
+        # Filter detections based on the classes_to_keep list
         filtered_detections = [
             d for d in current_detections if d.class_name in classes_to_keep
         ]

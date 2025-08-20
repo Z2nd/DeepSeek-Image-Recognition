@@ -3,21 +3,21 @@ import cv2
 import numpy as np
 import random
 
-# 创建一个颜色列表用于不同的实例分割掩码
-# 为了可复现性，我们固定随机种子
+# Create a color palette for different instance segmentation masks
+# For reproducibility, we set a fixed random seed
 random.seed(42)
 COLOR_PALETTE = [(random.randint(50, 255), random.randint(50, 255), random.randint(50, 255)) for _ in range(100)]
 
 def draw_segmentation_masks(image: np.ndarray, detections: list):
     """
-    在图像上绘制半透明的实例分割掩码。
+    Draw semi-transparent instance segmentation masks on the image.
 
     Args:
-        image (np.ndarray): 原始BGR图像。
-        detections (list): Detection对象的列表。
+        image (np.ndarray): Original BGR image.
+        detections (list): List of Detection objects.
 
     Returns:
-        np.ndarray: 叠加了掩码的图像。
+        np.ndarray: Image with overlaid masks.
     """
     annotated_image = image.copy()
     img_height, img_width, _ = annotated_image.shape
@@ -39,22 +39,22 @@ def draw_segmentation_masks(image: np.ndarray, detections: list):
         # Draw all found contours for this object on the image
         cv2.drawContours(annotated_image, contours, -1, color, thickness)
 
-    # 将带有颜色的遮罩与原始图像按权重混合
+    # Blend the colored mask with the original image using a weighted sum
     return annotated_image
 
 def draw_enhanced_annotations(image: np.ndarray, detections_list: list):
     """
-    在图像上绘制边界框和标签，支持递归绘制并用不同颜色区分层级。
+    Draw bounding boxes and labels on the image, supporting recursive drawing and using different colors for each level.
     """
     annotated_image = image.copy()
     img_height, img_width, _ = annotated_image.shape
-    
-    # 定义不同层级的颜色 (主检测=绿色, 二级=橙色, 三级=洋红, ...)
+
+    # Define colors for different levels (main detection=green, second level=orange, third level=magenta, ...)
     level_colors = [(0, 255, 0), (255, 165, 0), (255, 0, 255), (0, 255, 255)]
 
     def _draw_recursive(img, detections, level=0):
         for d in detections:
-            # --- 绘制当前层级的检测 ---
+            # --- Draw detection for the current level ---
             bbox = d.bbox
             class_name = d.class_name
             conf = d.confidence
@@ -77,10 +77,10 @@ def draw_enhanced_annotations(image: np.ndarray, detections_list: list):
             cv2.rectangle(img, (bbox[0], y1_label - th), (bbox[0] + tw, y1_label), box_color, -1)
             cv2.putText(img, label, (bbox[0], y1_label), cv2.FONT_HERSHEY_SIMPLEX, font_scale, label_text_color, font_thickness)
 
-            # --- 递归调用绘制子检测 ---
+            # --- Recursively draw sub-detections ---
             if 'sub_detections' in d.features and d.features['sub_detections']:
                 _draw_recursive(img, d.features['sub_detections'], level + 1)
 
-    # 从顶层（level 0）开始绘制
+    # Start drawing from the top level (level 0)
     _draw_recursive(annotated_image, detections_list, 0)
     return annotated_image
