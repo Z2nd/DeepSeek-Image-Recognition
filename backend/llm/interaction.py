@@ -5,30 +5,30 @@ import time
 import os
 from transformers import AutoTokenizer
 
-# --- 配置与全局变量 ---
+# --- Configuration & Global Variables ---
 METRICS_FILE_PATH = os.path.join(os.path.dirname(__file__), 'llm_metrics.json')
-# 我们假设一个平均回答长度，这是预测中最不确定的部分，可以根据经验调整
+# Assume an average answer length; this is the most uncertain part of the prediction and can be adjusted based on experience
 ESTIMATED_COMPLETION_TOKENS = 500 
-# 为模型加载、网络延迟等设置一个基础延迟（秒）
+# Set a base latency (seconds) for model loading, network delay, etc.
 BASE_LATENCY_SECONDS = 1.5 
 
-# --- Tokenizer 初始化 ---
+# --- Tokenizer Initialization ---
 try:
     print("Initializing tokenizer for prompt analysis...")
-    # 使用一个与Llama/DeepSeek兼容的开源tokenizer
+    # Use an open-source tokenizer compatible with Llama/DeepSeek
     tokenizer = AutoTokenizer.from_pretrained('NousResearch/Llama-2-7b-chat-hf')
     print("Tokenizer initialized.")
 except Exception as e:
     print(f"Warning: Could not initialize tokenizer. Prompt token counts will be estimated. Error: {e}")
     tokenizer = None
 
-# --- 性能追踪器 ---
+# --- Performance Tracker ---
 class MetricsTracker:
     def __init__(self, filepath):
         self.filepath = filepath
         self.metrics = {
             "total_runs": 0,
-            "avg_tokens_per_second": 2.0  # 初始的保守估计值
+            "avg_tokens_per_second": 2.0  # Initial conservative estimate
         }
         self.load()
 
@@ -45,10 +45,10 @@ class MetricsTracker:
         if new_eval_duration_ns == 0:
             return
 
-        # 计算本次运行的速度
+        # Calculate the speed for this run
         current_tokens_per_sec = new_eval_count / (new_eval_duration_ns / 1_000_000_000)
         
-        # 使用移动平均法更新平均速度，避免单次异常值影响过大
+        # Update the average speed using a moving average to avoid outliers having too much impact
         total = self.metrics["total_runs"]
         avg = self.metrics["avg_tokens_per_second"]
         new_avg = (total * avg + current_tokens_per_sec) / (total + 1)
@@ -60,14 +60,14 @@ class MetricsTracker:
     def get_avg_speed(self):
         return self.metrics["avg_tokens_per_second"]
 
-# 初始化追踪器实例
+# Initialize tracker instance
 tracker = MetricsTracker(METRICS_FILE_PATH)
 
-# --- 核心功能函数 ---
+# --- Core Functional Functions ---
 def _build_prompt(json_detections, question):
-    """辅助函数：构建完整的prompt字符串。"""
+    """Helper function: Build the full prompt string."""
     detections_data = json.loads(json_detections)
-    # 此处省略了原有的is_sequence判断，可以根据需要加回来
+    # The original is_sequence check is omitted here; add back if needed
     return (
         "You are an AI assistant that answers questions about an image based on structured detection data. "
         f"The image is {detections_data.get('image_height')}x{detections_data.get('image_width')} pixels, "
@@ -90,26 +90,26 @@ Question: {question}
     )
 
 def predict_response_time(json_detections, question):
-    """根据历史数据预测LLM响应时间。"""
+    """Predict LLM response time based on historical data."""
     prompt = _build_prompt(json_detections, question)
     
-    # 1. 获取平均生成速度
-    avg_speed = tracker.get_avg_speed() # tokens/sec
+    # 1. Get average generation speed
+    avg_speed = tracker.get_avg_speed()  # tokens/sec
 
-    # 2. 估算生成时间
+    # 2. Estimate generation time
     prediction_time = ESTIMATED_COMPLETION_TOKENS / avg_speed
 
-    # 3. （可选）更精确地估算提示词处理时间
+    # 3. (Optional) More accurately estimate prompt processing time
     if tokenizer:
         prompt_token_count = len(tokenizer.encode(prompt))
-        # 假设提示词处理速度是生成速度的5倍（通常更快）
+        # Assume prompt processing speed is 5x generation speed (usually faster)
         prompt_eval_time = prompt_token_count / (avg_speed * 1.5)
         prediction_time += prompt_eval_time
 
     return prediction_time + BASE_LATENCY_SECONDS
 
 def stream_answer(json_detections, question, ollama_api_url, model_name):
-    """执行流式API调用并返回最终的性能指标。"""
+    """Perform streaming API call and return final performance metrics."""
     prompt = _build_prompt(json_detections, question)
     payload = {"model": model_name, "prompt": prompt, "stream": True}
     
@@ -128,14 +128,14 @@ def stream_answer(json_detections, question, ollama_api_url, model_name):
                 final_answer_chunks.append(content)
                 
                 if chunk.get("done"):
-                    # 捕获所有最终的性能数据
+                    # get metrics from the last chunk
                     run_metrics['eval_count'] = chunk.get('eval_count', 0)
                     run_metrics['eval_duration'] = chunk.get('eval_duration', 0)
                     run_metrics['total_duration'] = chunk.get('total_duration', 0)
                     run_metrics['load_duration'] = chunk.get('load_duration', 0)
         
         full_response = "".join(final_answer_chunks)
-        # 更新追踪器
+        # update tracker with the final metrics
         if run_metrics.get('eval_count'):
             tracker.update(run_metrics['eval_count'], run_metrics['eval_duration'])
 

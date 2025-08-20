@@ -1,38 +1,38 @@
 {
   "image_height": 1080,
   "image_width": 1920,
-  "capture_time": "2025-08-20 09:50:04",
+  "capture_time": "2025-08-20 10:02:38",
   "detections": [
     {
       "class": "person",
-      "confidence": 0.8621922135353088,
+      "confidence": 0.8977892398834229,
       "bbox": [
-        456,
-        417,
-        1386,
-        1080
+        431,
+        403,
+        1444,
+        1079
       ],
-      "color_name": "yellow",
+      "color_name": "green",
       "sub_detections": [
         {
           "class": "face",
-          "confidence": 0.9373210072517395,
+          "confidence": 0.9119733572006226,
           "bbox": [
-            721,
-            431,
-            1075,
-            919
+            741,
+            412,
+            1079,
+            873
           ],
           "color_name": "green",
           "sub_detections": [
             {
               "class": "fear",
-              "confidence": 0.8855351209640503,
+              "confidence": 0.9704055786132812,
               "bbox": [
-                721,
-                431,
-                1074,
-                918
+                741,
+                412,
+                1077,
+                872
               ]
             }
           ]

@@ -1,19 +1,19 @@
-# backend/llm/formatting.py (修正版)
+# backend/llm/formatting.py
 import json
 
 def _format_detection_to_dict(detection_obj):
     """
-    辅助函数：将一个Detection对象及其特征转换为字典，并递归处理子检测。
+    Helper function: Convert a Detection object and its attributes to a dictionary, recursively processing sub-detections.
     """
-    # --- 修正：使用点符号(.)访问对象属性 ---
+    # --- Fix: Use dot notation to access object attributes ---
     detection_dict = {
         "class": detection_obj.class_name,
         "confidence": detection_obj.confidence,
         "bbox": detection_obj.bbox,
-        **detection_obj.features  # 将features字典中的所有键值对解包并合并
+        **detection_obj.features  # Unpack and merge all key-value pairs from the features dictionary
     }
     
-    # 递归处理子检测
+    # Recursively process sub-detections
     if 'sub_detections' in detection_dict:
         # detection_dict['sub_detections'] 是一个 Detection 对象的列表
         detection_dict['sub_detections'] = [
@@ -24,10 +24,10 @@ def _format_detection_to_dict(detection_obj):
 
 
 def format_detections_as_json_for_llm(detections_list, image_shape, capture_time=None):
-    """将检测结果列表（可能包含嵌套）格式化为JSON字符串。"""
+    """Format a list of detection results (possibly nested) as a JSON string."""
     
-    # 此处的 d 是一个字典，而不是 Detection 对象，因此调用 _format_detection_to_dict 
-    # 的是 detection 对象列表，而非字典列表
+    # Here, d is a Detection object, not a dictionary, so _format_detection_to_dict
+    # is called on a list of Detection objects, not a list of dictionaries.
     formatted_detections = [_format_detection_to_dict(d) for d in detections_list]
     
     data = {
@@ -44,7 +44,7 @@ def format_detections_as_json_for_llm(detections_list, image_shape, capture_time
 
 
 def format_sequence_detections_for_llm(sequence_detections, capture_times):
-    """将帧序列的检测结果格式化为单个JSON字符串。"""
+    """Format the detection results of a sequence of frames as a single JSON string."""
     formatted_frames = []
     for i, detections_list in enumerate(sequence_detections):
         frame_data = {
