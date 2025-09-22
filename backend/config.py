@@ -23,11 +23,11 @@ MULTI_MODEL_DETECTION_CONFIG = [
         'model_path': YOLO_COCO_SEGMENTATION_MODEL_PATH, 
         'classes_to_keep': ['person', 'bus', 'stop sign', 'handbag', 'cup', 'chair', 'couch', 'dinning table', 'laptop', 'mouse', 'keyboard', 'cell phone'] # <-- 根据您的需求修改
     },
-    # {
-    #     # Second model: Study desk item detection model
-    #     'model_path': YOLO_STUDYDESKITEM_MODEL_PATH,
-    #     'classes_to_keep': ['Apple-Pencil', 'Gag', 'Calculator', 'Charging-cable', 'Earphones', 'Keyboard', 'Keys', 'Laptoop', 'Markers', 'Mobile phone', 'Mouse', 'PC', 'Screen', 'Pen', 'StudentID_card', 'Wallet', 'Watch', 'Water bottle', 'iPad-Air', 'iPad-Pro'] # <-- 根据您的需求修改
-    # }
+    {
+        # Second model: Study desk item detection model
+        'model_path': YOLO_STUDYDESKITEM_MODEL_PATH,
+        'classes_to_keep': ['Gag', 'Charging-cable', 'Earphones', 'Keys', 'Markers', 'Mobile phone', 'Mouse', 'Screen', 'Pen', 'StudentID_card', 'Wallet', 'Watch', 'Water bottle', 'iPad-Air', 'iPad-Pro'] # <-- 根据您的需求修改
+    }
 ]
 
 # --- Hierarchical Detection Configuration ---
@@ -64,16 +64,7 @@ RECURSIVE_DETECTION_CONFIG = {
                 'max_detections': 1,         
                 'strategy': 'highest_confidence' 
             },
-            {
-                'class': 'keyboard',
-                'max_detections': 1,
-                'strategy': 'highest_confidence'
-            }
         ],
-        'sub_config': {}
-    },
-    "Laptop": {
-        'model_path': YOLO_WINDOWSELEMENT_MODEL_PATH,
         'sub_config': {}
     },
     "Screen": {
@@ -94,5 +85,5 @@ COLOR_NAMES = {
 # --- OCR Configuration ---
 # Classes in this list will trigger OCR text recognition
 OCR_ENABLED_CLASSES = [
-    'laptop','mouse','keyboard','Screen'
+    'laptop','keyboard','Screen'
 ]
