@@ -117,7 +117,7 @@ def stream_answer(json_detections, question, ollama_api_url, model_name):
     run_metrics = {}
 
     try:
-        response = requests.post(ollama_api_url, json=payload, timeout=1200, stream=True)
+        response = requests.post(ollama_api_url, json=payload, timeout=1800, stream=True)
         response.raise_for_status()
         
         for line in response.iter_lines():

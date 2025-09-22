@@ -1,7 +1,7 @@
 # backend/config.py
 
 # --- Path and URL Configuration ---
-YOLO_COCO_SEGMENTATION_MODEL_PATH = 'backend/resource/models/yolov8n-seg.pt' # Main model for general detection
+YOLO_COCO_SEGMENTATION_MODEL_PATH = 'backend/resource/models/yolo11n-seg.pt' # Main model for general detection
 YOLO_ELECTRONICS_MODEL_PATH = 'backend/resource/models/electro.pt' # Electronics-specific model
 YOLO_FACE_MODEL_PATH = 'backend/resource/models/face.pt' # Face detection model
 YOLO_EMOTION_MODEL_PATH = 'backend/resource/models/emotion.pt' # Emotion analysis model
@@ -13,7 +13,7 @@ YOLO_WINDOWSELEMENT_MODEL_PATH = 'backend/resource/models/windows-element.pt' # 
 OLLAMA_API_URL = 'http://localhost:11434/api/generate'
 DEEPSEEK_MODEL_NAME = 'deepseek-r1:8b'
 METADATA_PATH = 'backend/data/capture_metadata.json'
-IMAGE_PATH = 'backend/data/test_person.jpg'
+IMAGE_PATH = 'backend/data/study-desk.jpg'
 RESPONSE_LOG_PATH = 'backend/data/response_log.json'
 
 # Multi-model fusion detection configuration
@@ -21,13 +21,13 @@ MULTI_MODEL_DETECTION_CONFIG = [
     {
         # First model: YOLOv8 official segmentation model
         'model_path': YOLO_COCO_SEGMENTATION_MODEL_PATH, 
-        'classes_to_keep': ['person', 'bus', 'stop sign', 'handbag', 'cup', 'chair', 'couch', 'dinning table', 'laptop', 'mouse', 'keyboard', 'cell phone'] # <-- 根据您的需求修改
+        'classes_to_keep': ['person', 'bus', 'stop sign', 'handbag', 'cup', 'chair', 'couch', 'dinning table', 'laptop', 'mouse', 'keyboard', 'cell phone']
     },
-    # {
-    #     # Second model: Study desk item detection model
-    #     'model_path': YOLO_STUDYDESKITEM_MODEL_PATH,
-    #     'classes_to_keep': ['Gag', 'Charging-cable', 'Earphones', 'Keys', 'Markers', 'Mobile phone', 'Mouse', 'Screen', 'Pen', 'StudentID_card', 'Wallet', 'Watch', 'Water bottle', 'iPad-Air', 'iPad-Pro'] # <-- 根据您的需求修改
-    # }
+    {
+        # Second model: Study desk item detection model
+        'model_path': YOLO_STUDYDESKITEM_MODEL_PATH,
+        'classes_to_keep': ['Gag', 'Charging-cable', 'Earphones', 'Keys', 'Markers', 'Mobile phone', 'Mouse', 'Screen', 'Pen', 'StudentID_card', 'Wallet', 'Watch', 'Water bottle', 'iPad-Air', 'iPad-Pro'] # <-- 根据您的需求修改
+    }
 ]
 
 # --- Hierarchical Detection Configuration ---
@@ -69,6 +69,13 @@ RECURSIVE_DETECTION_CONFIG = {
     },
     "Screen": {
         'model_path': YOLO_WINDOWSELEMENT_MODEL_PATH,
+        'post_rules': [
+            {
+                'class': 'activewindow',         
+                'max_detections': 1,         
+                'strategy': 'highest_confidence' 
+            },
+        ],
         'sub_config': {}
     }
 }

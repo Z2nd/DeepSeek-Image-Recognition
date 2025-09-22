@@ -21,7 +21,7 @@ except ImportError:
     IS_HARDWARE = False
 
 # ------------ TESTING MODE ------------
-# IS_HARDWARE = False
+IS_HARDWARE = False
 # --------------------------------------
 
 # Import all necessary modules and configurations from the backend.

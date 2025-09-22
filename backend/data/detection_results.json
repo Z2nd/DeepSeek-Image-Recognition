@@ -1,189 +1,220 @@
 {
-  "image_height": 1080,
-  "image_width": 1920,
-  "capture_time": "2025-09-22 03:07:58",
+  "image_height": 3072,
+  "image_width": 4096,
+  "capture_time": "2025-09-22 05:46:25",
   "detections": [
     {
       "class": "laptop",
-      "confidence": 0.9120914340019226,
+      "confidence": 0.9101162552833557,
       "bbox": [
-        0,
-        0,
-        481,
-        574
+        1546,
+        1385,
+        2631,
+        2603
       ],
-      "color_name": "green",
-      "text": "SereniPoj",
-      "sub_detections": [
-        {
-          "class": "menubar",
-          "confidence": 0.7496583461761475,
-          "bbox": [
-            2,
-            312,
-            470,
-            340
-          ]
-        }
-      ],
-      "position": "top-left"
-    },
-    {
-      "class": "keyboard",
-      "confidence": 0.9033674001693726,
-      "bbox": [
-        270,
-        735,
-        1143,
-        1072
-      ],
-      "color_name": "yellow",
-      "position": "top-left"
-    },
-    {
-      "class": "cup",
-      "confidence": 0.8801080584526062,
-      "bbox": [
-        1424,
-        647,
-        1701,
-        1073
-      ],
-      "color_name": "yellow",
-      "position": "top-center"
-    },
-    {
-      "class": "keyboard",
-      "confidence": 0.2649330496788025,
-      "bbox": [
-        2,
-        354,
-        446,
-        460
-      ],
-      "color_name": "green",
-      "position": "top-left"
-    },
-    {
-      "class": "Screen",
-      "confidence": 0.8690614700317383,
-      "bbox": [
-        435,
-        3,
-        1901,
-        681
-      ],
-      "color_name": "green",
-      "text": "Menwnnr E Ued. Keybonrdn0 6d uat  Tiaht Illo It Jollya Pt [6 1gt) Ioi Iod {piln I1ts MAIn ViyI pip Itptp terbin 01.2 { Viduanmt pLd Loltlro Meaiotored Dul ui7tcnoim Du DLperiu} Eenni W Mut 61i78 Ilones Iuas tlincing T Jbaclc Oeb aoc",
+      "color_name": "white + pink",
+      "text": " ASIan KuNG-FU GENERATOH ASIAN KUNG-FU GENERATION Re:Re:(2016 ver) SMMTAI4EIEX(vocals, guitar) 8Su T(guitar, backing vocals). WBTIA (bass, backing vocals). {PItl R(drums) . iria*tztibirirajge, Br/iz2 itiija] Iixta. i23KE044rr157 @abme: Re:Re:Fxieari (RarT{Eagttg) OP idoyrt, Rijil: Album- V 1L)7 (Sol-fa) CAC IA TT Mm OCA CTAL Ma TEA Arelle CTRL",
       "sub_detections": [
         {
           "class": "activewindow",
-          "confidence": 0.3544682264328003,
+          "confidence": 0.935804545879364,
           "bbox": [
-            439,
-            3,
-            1901,
-            549
+            1571,
+            1427,
+            2528,
+            2598
           ]
         }
       ],
-      "position": "top-left"
+      "position": "middle-center"
     },
     {
-      "class": "PC",
-      "confidence": 0.7164409160614014,
+      "class": "mouse",
+      "confidence": 0.7452242374420166,
       "bbox": [
-        0,
-        892,
-        481,
-        1078
+        2891,
+        2020,
+        3092,
+        2302
       ],
-      "color_name": "green",
-      "position": "top-left"
+      "color_name": "gray + orange",
+      "position": "bottom-right"
     },
     {
-      "class": "Mobile phone",
-      "confidence": 0.6839487552642822,
+      "class": "keyboard",
+      "confidence": 0.5951258540153503,
       "bbox": [
-        636,
-        532,
-        1083,
-        905
+        3485,
+        846,
+        4093,
+        1006
       ],
-      "color_name": "green",
-      "position": "top-left"
+      "color_name": "black + orange",
+      "position": "top-right"
     },
     {
-      "class": "Watch",
-      "confidence": 0.6276521682739258,
+      "class": "mouse",
+      "confidence": 0.5296634435653687,
       "bbox": [
-        0,
-        616,
-        75,
-        806
+        2921,
+        2428,
+        3254,
+        2870
       ],
-      "color_name": "green",
-      "position": "top-left"
+      "color_name": "gray + orange",
+      "position": "bottom-right"
     },
     {
-      "class": "Apple-Pencil",
-      "confidence": 0.6184680461883545,
+      "class": "keyboard",
+      "confidence": 0.38121122121810913,
       "bbox": [
-        1206,
-        914,
-        1247,
-        1080
+        1588,
+        1951,
+        2553,
+        2316
       ],
-      "color_name": "green",
-      "position": "top-left"
+      "color_name": "white + None",
+      "text": "TT Mm OCA c CTAL PoDt CTRL",
+      "position": "bottom-center"
     },
     {
-      "class": "Keyboard",
-      "confidence": 0.6047506928443909,
+      "class": "cell phone",
+      "confidence": 0.3496297597885132,
       "bbox": [
-        250,
-        739,
-        1128,
-        1076
+        61,
+        2443,
+        484,
+        2936
       ],
-      "color_name": "green",
-      "position": "top-left"
+      "color_name": "black + blue",
+      "position": "bottom-left"
     },
     {
-      "class": "Charging-cable",
-      "confidence": 0.43189314007759094,
+      "class": "cell phone",
+      "confidence": 0.31496500968933105,
       "bbox": [
-        1426,
-        647,
-        1698,
-        1076
+        2559,
+        1612,
+        2870,
+        1865
       ],
-      "color_name": "green",
+      "color_name": "gray + None",
+      "position": "middle-center"
+    },
+    {
+      "class": "StudentID_card",
+      "confidence": 0.9522979855537415,
+      "bbox": [
+        3011,
+        1679,
+        3625,
+        2467
+      ],
+      "color_name": "gray + yellow",
+      "position": "bottom-right"
+    },
+    {
+      "class": "Screen",
+      "confidence": 0.9468454122543335,
+      "bbox": [
+        523,
+        63,
+        3556,
+        1211
+      ],
+      "color_name": "gray + yellow",
+      "text": "Google Gemini mnubeSLMEA'8195u7 yolov1 aniutrar(jbbox? Fle Edit Selecton Vicw Go Run Terminal Help com/chat/7096847b-d7a6-4064-9007-c/3/06cc9859 P Daepsert-Imsge-Recognon analzerspy JPp ipynb M Blackboard ECS Student Page Panopto Studeni Dashboard byzai Integrale all_ SharePoint NotebookLM Claude Google Docs Overleal Online LaT DeeplER Stux appipynb printfyolo_modelnames) conligpy Other Bookmarks Generate + Code Markdown D Run AlI Tree Style Tab bus 9 Restart = Oeer NI Ouiputs Vicw dala Share (Puthon Google Gemini skateboard Scarch CurltK bOCRSt6R #awOrSLMGBI Chat Olit ^affr] OCRAnalyzer %, 'Jr Analyzer @F pytesseract IQIEIGYIYA. IyolovH 1katlta\"irbb XJty^ @JJJRIKROI (@ExkikL}) B KEil(JOCRHNJL , #YAPJZiJIT] features = Volce print (yolo_model. 00 Files (eer5ipktt 'per son\" Taske (E VisionPipeline tiFJ OCRAnalyzer IFESNLS Uu. botorcycle B cncuit Projecta UGOCRIS4LSAf @MeS LbAME 12KILILNUSON: 0 Pinned WeheERR facept 4 VreiteEli I7k app.py H app. ipynb (EtJaIkJ02; OCRAnalyzer . bcb pr Urihutt-jTALLUT MOCLLMIRiSESWLOCRISQ shudy Jolot Hatory 023Skr 0 Viton Yeslardoy W0l7iz \" pytessoract HI Tesseract-OCR. ~pyaches #AULAESLLMMAGr3t config-py #AMIOCRIARRN anulyzersdy PyTorchfES} *((A1S} Sfe Nlyr5(try VpSTHJAEHS} 34442 5200 poronalrod Advertialng Imp 40g7e\"Ltit (LJlt@ cMsKAZAIIARU Python@ Wim initIejiut ont bash Collapso Wrop Cot Morute cppDrnt WtI5rttU] pip install Dutosecrct opencv-python-hendloss DoopSool \"papy RGBRKT Aitik DDaA Aennn Dlbud coicolr @phreLIp9 Tesseract-OCR cphre2 p9 MTTultan Ubuntulron MIcrosoft Mindon [R# 10. Jaln 0 phvelis (c) Mcrosoft Corporatlon #au'70743\"XHani' Ooatttr: oed-camibynb bash Colapao Wrdd Con Wrplicatlon DeT Rcroputiov modl itiponb Gacc pet install tossoret ocr Hcrosoft Mlnda n (6r 10_ Jon (c) Alcrosoft corporatlol dortrn: How can Grok help? Kaneedy E1 ProjectsVecProject WpplIcatlon Derp Anto Oo DL CoL grok; nteraqton-py OopY \"bicycle\" rolfin pt Unit_py cre pT detectonDy OCDT conng D) 469li AADULmd Aaleto ornb 74057 ",
+      "sub_detections": [
+        {
+          "class": "activewindow",
+          "confidence": 0.9793425798416138,
+          "bbox": [
+            560,
+            89,
+            2048,
+            1114
+          ]
+        },
+        {
+          "class": "tab",
+          "confidence": 0.7341057658195496,
+          "bbox": [
+            1131,
+            83,
+            1291,
+            129
+          ]
+        },
+        {
+          "class": "tab",
+          "confidence": 0.5546349883079529,
+          "bbox": [
+            997,
+            84,
+            1103,
+            130
+          ]
+        },
+        {
+          "class": "tab",
+          "confidence": 0.31155943870544434,
+          "bbox": [
+            1072,
+            82,
+            1126,
+            129
+          ]
+        }
+      ],
       "position": "top-center"
     },
     {
-      "class": "Keyboard",
-      "confidence": 0.4206168055534363,
+      "class": "Water bottle",
+      "confidence": 0.9149872064590454,
       "bbox": [
-        1,
-        3,
-        471,
-        363
+        1026,
+        1361,
+        1316,
+        1915
       ],
-      "color_name": "green",
-      "position": "top-left"
+      "color_name": "gray + yellow",
+      "position": "middle-left"
     },
     {
-      "class": "Calculator",
-      "confidence": 0.2682659924030304,
+      "class": "StudentID_card",
+      "confidence": 0.7594696283340454,
       "bbox": [
-        0,
-        4,
-        471,
-        363
+        1908,
+        2630,
+        2251,
+        2882
       ],
-      "color_name": "green",
-      "position": "top-left"
+      "color_name": "gray + yellow",
+      "position": "bottom-center"
+    },
+    {
+      "class": "StudentID_card",
+      "confidence": 0.7554696202278137,
+      "bbox": [
+        335,
+        1731,
+        995,
+        2207
+      ],
+      "color_name": "gray + yellow",
+      "position": "middle-left"
+    },
+    {
+      "class": "Mobile phone",
+      "confidence": 0.43894562125205994,
+      "bbox": [
+        2549,
+        1512,
+        3038,
+        1965
+      ],
+      "color_name": "gray + yellow",
+      "position": "middle-right"
     }
   ]
 }
