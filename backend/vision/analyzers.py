@@ -1,11 +1,13 @@
 # backend/vision/analyzers.py (修正版)
 import numpy as np
+import cv2
 from ultralytics import YOLO
 from backend import config
 from .core import Analyzer, Detection
 from .features import get_dominant_color
 from .detection import get_initial_detections
 from .ocr import get_text_from_image
+from .color_clustering import dominant_colors
 
 class ColorAnalyzer(Analyzer):
     """分析物体的主导颜色。"""
@@ -13,13 +15,11 @@ class ColorAnalyzer(Analyzer):
         original_image = kwargs.get('original_image')
         if original_image is None: return
 
-        dominant_color, color_name = get_dominant_color(
-            original_image, 
-            mask=detection.mask,
-            color_space='HSL'
-        )
-        # detection.add_feature('dominant_color_hsv', dominant_color)
-        detection.add_feature('color_name', color_name)
+        # 从BGR转换成 RGB 格式
+        original_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2RGB)
+        palette = dominant_colors(original_image, mask=detection.mask)
+
+        detection.add_feature('color_name', f'{palette[0]["name"] if palette else None} + {palette[1]["name"] if len(palette) > 1 else None}')
 
 class RecursiveYOLOAnalyzer(Analyzer):
     """一个可以递归执行YOLO检测的分析器。"""

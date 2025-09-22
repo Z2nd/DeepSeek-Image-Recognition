@@ -13,7 +13,7 @@ YOLO_WINDOWSELEMENT_MODEL_PATH = 'backend/resource/models/windows-element.pt' # 
 OLLAMA_API_URL = 'http://localhost:11434/api/generate'
 DEEPSEEK_MODEL_NAME = 'deepseek-r1:8b'
 METADATA_PATH = 'backend/data/capture_metadata.json'
-IMAGE_PATH = 'backend/data/study-desk.jpg'
+IMAGE_PATH = 'backend/data/test_person.jpg'
 RESPONSE_LOG_PATH = 'backend/data/response_log.json'
 
 # Multi-model fusion detection configuration
@@ -23,11 +23,11 @@ MULTI_MODEL_DETECTION_CONFIG = [
         'model_path': YOLO_COCO_SEGMENTATION_MODEL_PATH, 
         'classes_to_keep': ['person', 'bus', 'stop sign', 'handbag', 'cup', 'chair', 'couch', 'dinning table', 'laptop', 'mouse', 'keyboard', 'cell phone'] # <-- 根据您的需求修改
     },
-    {
-        # Second model: Study desk item detection model
-        'model_path': YOLO_STUDYDESKITEM_MODEL_PATH,
-        'classes_to_keep': ['Gag', 'Charging-cable', 'Earphones', 'Keys', 'Markers', 'Mobile phone', 'Mouse', 'Screen', 'Pen', 'StudentID_card', 'Wallet', 'Watch', 'Water bottle', 'iPad-Air', 'iPad-Pro'] # <-- 根据您的需求修改
-    }
+    # {
+    #     # Second model: Study desk item detection model
+    #     'model_path': YOLO_STUDYDESKITEM_MODEL_PATH,
+    #     'classes_to_keep': ['Gag', 'Charging-cable', 'Earphones', 'Keys', 'Markers', 'Mobile phone', 'Mouse', 'Screen', 'Pen', 'StudentID_card', 'Wallet', 'Watch', 'Water bottle', 'iPad-Air', 'iPad-Pro'] # <-- 根据您的需求修改
+    # }
 ]
 
 # --- Hierarchical Detection Configuration ---
