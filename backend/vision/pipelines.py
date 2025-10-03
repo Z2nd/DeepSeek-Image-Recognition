@@ -1,3 +1,4 @@
+# backend/vision/pipeline.py
 from .core import Detection, Analyzer
 from .detection import get_initial_detections, get_combined_detections
 from .drawing import draw_enhanced_annotations, draw_segmentation_masks
@@ -5,45 +6,68 @@ from backend import config
 
 
 class VisionPipeline:
+    """A complete vision analysis pipeline that supports multi-model detection, recursive analysis, 
+    post-processing analyzers, and visualization.
+    """
     def __init__(self, recursive_analyzer: Analyzer, post_analyzers: list = None):
+        """
+        Initialize the VisionPipeline.
+
+        Args:
+            recursive_analyzer (Analyzer): Analyzer capable of recursive detection.
+            post_analyzers (list, optional): Additional analyzers to run after recursive analysis. Defaults to None.
+        """
         self.recursive_analyzer = recursive_analyzer
-        self.post_analyzers = post_analyzers if post_analyzers else [] # 新增
-        self.model_cache = {} # <-- 新增：为所有模型提供一个共享缓存
+        self.post_analyzers = post_analyzers if post_analyzers else []
+        self.model_cache = {} # Shared cache for all YOLO models
 
     def run(self, image_bgr, **kwargs):
         """
-        执行视觉分析流水线，并增加了后处理步骤。
+        Run the full vision analysis pipeline on the input image.
+
+        The pipeline performs:
+            1. Multi-model initial detections.
+            2. Recursive analysis and additional post analyzers.
+            3. Enhanced annotation drawing with bounding boxes and labels.
+            4. Segmentation mask overlay.
+
+        Args:
+            image_bgr (np.ndarray): Input image in BGR format.
+            **kwargs: Additional keyword arguments for analyzers.
+
+        Returns:
+            tuple:
+                - list[Detection]: List of all Detection objects after analysis.
+                - np.ndarray: Annotated image with bounding boxes and segmentation masks.
         """
-        # --- Remove explicitly passed parameters from kwargs to increase code robustness ---
+        # Remove explicit parameters to avoid conflicts in kwargs
         kwargs.pop('yolo_model', None)
         kwargs.pop('original_image', None)
         
-        # --- 1. 从多个模型获取组合后的初始检测结果 ---
+        # 1. Get combined detections from multiple models
         initial_detections = get_combined_detections(
             image_bgr,
             config.MULTI_MODEL_DETECTION_CONFIG,
             self.model_cache
         )
         
-        # --- 2. 对合并后的结果列表进行递归分析和其他分析 ---
-        # 我们需要调用 recursive_analyzer 的内部方法来处理已经存在的检测列表
+        # 2. Recursive analysis and feature extraction
         self.recursive_analyzer._recursive_analyze(
             initial_detections, 
             self.recursive_analyzer.initial_config,
             original_image=image_bgr,
-            model_cache=self.model_cache, # 将缓存传递下去
+            model_cache=self.model_cache,
             **kwargs
         )
             
-        # --- 3. 运行所有的后处理分析器 ---
+        # 3. Run post-processing analyzers
         for post_analyzer in self.post_analyzers:
-            # 注意：GridPositionAnalyzer可能需要修改来处理列表
             post_analyzer.analyze(initial_detections)
             
-        # --- 4. 绘制所有层级的标注 ---
+        # 4. Draw enhanced annotations (bounding boxes, labels)
         annotated_image = draw_enhanced_annotations(image_bgr, initial_detections)
         
-        # 找到所有包含掩码的检测对象并绘制
+        # Collect all detections with masks for overlay
         all_detections_with_masks = []
         def collect_masks(detections):
             for d in detections:
@@ -53,6 +77,7 @@ class VisionPipeline:
                     collect_masks(d.features['sub_detections'])
         collect_masks(initial_detections)
         
+        # Draw segmentation masks on the annotated image
         annotated_image = draw_segmentation_masks(annotated_image, all_detections_with_masks)
 
         return initial_detections, annotated_image

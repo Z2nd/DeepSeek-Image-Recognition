@@ -44,7 +44,15 @@ def draw_segmentation_masks(image: np.ndarray, detections: list):
 
 def draw_enhanced_annotations(image: np.ndarray, detections_list: list):
     """
-    Draw bounding boxes and labels on the image, supporting recursive drawing and using different colors for each level.
+    Draw bounding boxes, class labels, and optional features on the image.
+    Supports recursive drawing for sub-detections and uses different colors for each level.
+
+    Args:
+        image (np.ndarray): Original BGR image.
+        detections_list (list): List of top-level Detection objects.
+
+    Returns:
+        np.ndarray: Image with annotated bounding boxes and labels.
     """
     annotated_image = image.copy()
     img_height, img_width, _ = annotated_image.shape
@@ -63,17 +71,22 @@ def draw_enhanced_annotations(image: np.ndarray, detections_list: list):
             box_color = level_colors[level % len(level_colors)]
             label_text_color = (0, 0, 0)
 
+            # Adaptive box thickness
             box_thickness = max(1, int(img_width / (600 + level * 200)))
             cv2.rectangle(img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), box_color, box_thickness)
             
+            # Label text
             label = f"{class_name} {conf:.2f} {color}" if color else f"{class_name} {conf:.2f}"
             font_scale = max(0.3, (bbox[2] - bbox[0]) / 350)
             font_thickness = max(1, int(font_scale * 1.5))
             
             (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_thickness)
+            
+            # Position label above or below the bounding box if necessary            
             y1_label = bbox[1] - 5
             if y1_label - th < 0: y1_label = bbox[1] + th + 5
             
+            # Draw label background and text
             cv2.rectangle(img, (bbox[0], y1_label - th), (bbox[0] + tw, y1_label), box_color, -1)
             cv2.putText(img, label, (bbox[0], y1_label), cv2.FONT_HERSHEY_SIMPLEX, font_scale, label_text_color, font_thickness)
 

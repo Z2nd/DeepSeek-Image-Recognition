@@ -1,30 +1,36 @@
-# app.py (Fixed Version)
-#
-# This version corrects the ImportError by using the new refactored functions
-# from the interaction.py module.
+"""Main application script for DeepSeek Image Recognition.
 
+This module manages the application flow, including:
+- Capturing images (from PiCamera on Raspberry Pi or from file in simulation mode).
+- Running the vision analysis pipeline with YOLO and other analyzers.
+- Launching an interactive Q&A session with an LLM to answer questions about the image.
+
+Supports both hardware mode and simulation mode.
+"""
 import cv2
 import os
 import json
 import sys
 from datetime import datetime
 
-# Attempt to import hardware-specific library; set a flag accordingly.
+# Try importing the Raspberry Pi camera library. If unavailable,
+# fall back to simulation mode where images are loaded from disk.
 try:
     from picamera2 import Picamera2
     import time
     IS_HARDWARE = True
     print("picamera2 library found. Running in HARDWARE mode.")
 except ImportError:
-    # This is a normal warning when not on a Raspberry Pi.
-    # print("WARNING: picamera2 library not found. Running in SIMULATION mode (loading local image).")
+    # Normal case when not running on a Raspberry Pi.
+    # Simulation mode will be used, loading a local image instead of hardware capture.
     IS_HARDWARE = False
 
 # ------------ TESTING MODE ------------
-IS_HARDWARE = False
+# Force testing mode by disabling hardware usage, regardless of environment.
+# IS_HARDWARE = False
 # --------------------------------------
 
-# Import all necessary modules and configurations from the backend.
+# Import backend modules, configurations, and analyzers.
 from backend import config
 from backend.vision.pipelines import VisionPipeline
 from backend.vision.analyzers import (
@@ -34,17 +40,20 @@ from backend.vision.analyzers import (
     OCRAnalyzer
 )
 from backend.llm.formatting import format_detections_as_json_for_llm
-# Corrected import: Use the new refactored functions
 from backend.llm.interaction import predict_response_time, stream_answer
 
 
 class Application:
-    """
-    Encapsulates the entire application flow from image capture to interactive Q&A.
+    """Encapsulates the complete application workflow.
+
+    This includes initialization, image capture, vision pipeline execution,
+    and interactive Q&A with the LLM.
     """
     def __init__(self):
-        """
-        Initializes configurations, loads models, and constructs the vision pipeline.
+        """Initializes the application.
+
+        Loads fallback image for dimensions, initializes analyzers, and
+        constructs the vision pipeline.
         """
         print("\nInitializing application...")
 
@@ -75,8 +84,15 @@ class Application:
         print("Vision pipeline constructed successfully.")
 
     def capture_image(self):
-        """
-        Captures an image from the camera if on hardware, otherwise loads from a file.
+        """Captures an image from PiCamera or loads a fallback image from file.
+
+        Returns:
+            tuple:
+                - numpy.ndarray: Image in BGR format.
+                - datetime: Capture timestamp.
+
+        Raises:
+            Exception: If image capture or loading fails.
         """
         if IS_HARDWARE:
             print("\nCapturing image from PiCamera...")
@@ -104,8 +120,14 @@ class Application:
             return image_bgr, datetime.now()
 
     def process_image(self, image_bgr, capture_time):
-        """
-        Runs the full vision pipeline on the provided image.
+        """Runs the vision pipeline on the given image.
+
+        Args:
+            image_bgr (numpy.ndarray): Input image in BGR format.
+            capture_time (datetime): Timestamp of the image capture.
+
+        Returns:
+            str: JSON-formatted detections suitable for LLM processing.
         """
         print("\nRunning vision pipeline... (This may take a moment)")
         start_time = time.time() if 'time' in globals() else 0
@@ -127,8 +149,10 @@ class Application:
         return json_detections
 
     def interactive_qa(self, json_detections):
-        """
-        Starts an interactive command-line Q&A session with the LLM.
+        """Starts an interactive Q&A session with the LLM.
+
+        Args:
+            json_detections (str): JSON-formatted detection results.
         """
         print("\n" + "="*50)
         print("AI Vision Assistant Ready. Ask me about the image.")
@@ -145,17 +169,17 @@ class Application:
                 if not question:
                     continue
 
-                # 1. Call the prediction function
+                # Predict response time before generating the answer.
                 predicted_time = predict_response_time(json_detections, question)
                 print(f"(Estimated time: {predicted_time:.1f} seconds)")
 
-                # 2. Call the streaming function
+                # Stream the answer from the LLM.
                 print("\nAnswer: ", end='', flush=True)
                 full_response, metrics = stream_answer(
                     json_detections, question, config.OLLAMA_API_URL, config.DEEPSEEK_MODEL_NAME
                 )
 
-                # 3. Display performance metrics
+                # Display performance metrics if available.
                 if metrics:
                     total_s = metrics.get('total_duration', 0) / 1_000_000_000
                     load_s = metrics.get('load_duration', 0) / 1_000_000_000
@@ -180,6 +204,7 @@ class Application:
             except (KeyboardInterrupt, EOFError):
                 break
 
+        # Save the Q&A log to file.
         try:
             with open(config.RESPONSE_LOG_PATH, 'w', encoding='utf-8') as f:
                 json.dump(response_log, f, indent=2, ensure_ascii=False)
@@ -188,8 +213,10 @@ class Application:
             print(f"ERROR: Could not save log file: {e}")
 
     def run(self):
-        """
-        Executes the main application flow.
+        """Executes the main application flow.
+
+        Captures an image, processes it, saves results,
+        and starts an interactive Q&A session.
         """
         image_bgr, capture_time = self.capture_image()
         if image_bgr is None:

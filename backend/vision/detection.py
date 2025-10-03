@@ -6,14 +6,15 @@ from .core import Detection
 
 def get_initial_detections(image_bgr: np.ndarray, yolo_model: YOLO) -> list[Detection]:
     """
-    Perform initial YOLO detection and segmentation, returning a list of Detection objects.
+    Perform initial YOLO detection and optional segmentation, returning a list of Detection objects.
 
     Args:
         image_bgr (np.ndarray): Input image in BGR format.
         yolo_model (YOLO): Loaded YOLO model.
 
     Returns:
-        list[Detection]: List of Detection objects containing basic information.
+        list[Detection]: List of Detection objects containing bounding boxes, class names,
+                         confidence scores, masks, and ROIs.
     """
     detections = []
     if yolo_model is None:
@@ -54,10 +55,17 @@ def get_initial_detections(image_bgr: np.ndarray, yolo_model: YOLO) -> list[Dete
 
 def get_combined_detections(image_bgr: np.ndarray, multi_model_config: list, model_cache: dict) -> list[Detection]:
     """
-    Perform detection using multiple models, filter and combine results based on configuration.
-    """
-    from ultralytics import YOLO
+    Perform detection using multiple YOLO models, filter results based on configuration,
+    and combine all filtered detections into a single list.
 
+    Args:
+        image_bgr (np.ndarray): Input image in BGR format.
+        multi_model_config (list): List of dicts specifying model paths and classes to keep.
+        model_cache (dict): Cache of already loaded YOLO model instances.
+
+    Returns:
+        list[Detection]: Combined list of filtered Detection objects from all models.
+    """
     all_filtered_detections = []
 
     for config in multi_model_config:
@@ -73,10 +81,10 @@ def get_combined_detections(image_bgr: np.ndarray, multi_model_config: list, mod
         if yolo_model is None:
             continue
         
-        # Use the existing function for initial detection
+        # Perform initial detection
         current_detections = get_initial_detections(image_bgr, yolo_model)
         
-        # Filter detections based on the classes_to_keep list
+        # Filter detections according to allowed classes
         filtered_detections = [
             d for d in current_detections if d.class_name in classes_to_keep
         ]

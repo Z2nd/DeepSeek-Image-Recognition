@@ -2,34 +2,34 @@
 import easyocr
 import numpy as np
 
-# 初始化OCR Reader。我们在这里将其创建为全局变量，
-# 这样模型只需要加载一次，可以避免在每次调用时都重新加载，从而提高效率。
-# ['en'] 表示我们只识别英文。如果您需要识别中文，可以改成 ['ch_sim', 'en']
+# Initialize a global EasyOCR Reader to avoid reloading the model on each call.
+# Only English ('en') is recognized here. Add other languages like ['ch_sim', 'en'] if needed.
 print("Initializing EasyOCR Reader...")
 reader = easyocr.Reader(['en']) 
 print("EasyOCR Reader initialized.")
 
 def get_text_from_image(roi: np.ndarray) -> str:
     """
-    使用EasyOCR从图像区域(ROI)中提取文本。
-    
+    Extract text from a region of interest (ROI) using EasyOCR.
+
     Args:
-        roi (np.ndarray): 包含待识别文本的图像区域 (BGR格式)。
-        
+        roi (np.ndarray): Image region containing text in BGR format.
+
     Returns:
-        str: 识别出的所有文本拼接成的单个字符串，如果没有识别到则返回空字符串。
+        str: Concatenated text recognized from the ROI. Returns an empty string if no text is detected.
     """
     if roi is None or roi.size == 0:
         return ""
         
     try:
-        # EasyOCR的 readtext 方法返回一个结果列表，每个结果包含 [bbox, text, confidence]
+        # Use EasyOCR's readtext method to extract text.
+        # Each result is a list: [bounding_box, text, confidence]
         results = reader.readtext(roi)
         
         if not results:
             return ""
             
-        # 我们将所有识别到的文本片段用空格连接成一个字符串
+        # Concatenate all detected text segments into a single string
         recognized_texts = [res[1] for res in results]
         return " ".join(recognized_texts)
         

@@ -3,24 +3,39 @@ from abc import ABC, abstractmethod
 import numpy as np
 import itertools
 
-# 用于生成唯一ID的计数器
+# Counter for generating unique IDs for each detection
 id_counter = itertools.count()
 
 class Detection:
     """
-    一个用于存储单个检测物体所有信息的数据类。
+    Data class representing a single detected object with all associated information.
+
+    Attributes:
+        id (int): Unique ID assigned to this detection.
+        bbox (list[float]): Bounding box coordinates [x1, y1, x2, y2].
+        class_name (str): Primary class label of the object.
+        confidence (float): Confidence score from YOLO detection.
+        mask (np.ndarray or None): Optional instance segmentation mask.
+        roi (np.ndarray or None): Optional region of interest cropped from the original image.
+        features (dict): Dictionary to store additional analysis results.
     """
     def __init__(self, bbox, class_name, confidence, mask=None, roi=None):
-        self.id = next(id_counter) # 新增：为每个检测对象分配一个唯一ID
-        self.bbox = bbox  # 边界框 [x1, y1, x2, y2]
-        self.class_name = class_name  # 主要类别名称
-        self.confidence = confidence  # YOLO置信度
-        self.mask = mask  # 实例分割掩码 (numpy array)
-        self.roi = roi    # 从原图中裁剪的感兴趣区域 (numpy array)
-        self.features = {}  # 用于存储后续分析结果的字典
+        self.id = next(id_counter) # Assign a unique ID to each detection
+        self.bbox = bbox
+        self.class_name = class_name
+        self.confidence = confidence
+        self.mask = mask
+        self.roi = roi
+        self.features = {}
 
     def add_feature(self, name, value):
-        """向该物体添加一个分析特征。"""
+        """
+        Adds an analysis feature to this detection.
+
+        Args:
+            name (str): Name of the feature.
+            value: Value of the feature.
+        """
         self.features[name] = value
 
     def __repr__(self):
@@ -28,16 +43,16 @@ class Detection:
 
 class Analyzer(ABC):
     """
-    所有分析器的抽象基类。
-    每个分析器都必须实现 analyze 方法。
+    Abstract base class for all analyzers.
+    Each analyzer must implement the `analyze` method.
     """
     @abstractmethod
     def analyze(self, detection: Detection, **kwargs):
         """
-        对单个 Detection 对象进行分析，并将结果添加到其 features 字典中。
-        
+        Analyze a single Detection object and add results to its features dictionary.
+
         Args:
-            detection (Detection): 要分析的检测对象。
-            **kwargs: 可能需要的额外参数 (如整张图、其他模型等)。
+            detection (Detection): The detection object to analyze.
+            **kwargs: Additional optional parameters (e.g., original image, other models).
         """
         pass

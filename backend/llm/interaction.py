@@ -7,15 +7,12 @@ from transformers import AutoTokenizer
 
 # --- Configuration & Global Variables ---
 METRICS_FILE_PATH = os.path.join(os.path.dirname(__file__), 'llm_metrics.json')
-# Assume an average answer length; this is the most uncertain part of the prediction and can be adjusted based on experience
-ESTIMATED_COMPLETION_TOKENS = 500 
-# Set a base latency (seconds) for model loading, network delay, etc.
-BASE_LATENCY_SECONDS = 1.5 
+ESTIMATED_COMPLETION_TOKENS = 500 # Estimated average answer token count
+BASE_LATENCY_SECONDS = 1.5 # Base latency for model loading/network delays
 
 # --- Tokenizer Initialization ---
 try:
     print("Initializing tokenizer for prompt analysis...")
-    # Use an open-source tokenizer compatible with Llama/DeepSeek
     tokenizer = AutoTokenizer.from_pretrained('NousResearch/Llama-2-7b-chat-hf')
     print("Tokenizer initialized.")
 except Exception as e:
@@ -24,7 +21,16 @@ except Exception as e:
 
 # --- Performance Tracker ---
 class MetricsTracker:
+    """
+    Tracks historical token generation speed to estimate response times.
+    """
     def __init__(self, filepath):
+        """
+        Initialize the metrics tracker.
+
+        Args:
+            filepath (str): Path to save/load JSON metrics.
+        """
         self.filepath = filepath
         self.metrics = {
             "total_runs": 0,
@@ -33,15 +39,24 @@ class MetricsTracker:
         self.load()
 
     def load(self):
+        """Load metrics from JSON file if it exists."""
         if os.path.exists(self.filepath):
             with open(self.filepath, 'r') as f:
                 self.metrics = json.load(f)
     
     def save(self):
+        """Save current metrics to JSON file."""
         with open(self.filepath, 'w') as f:
             json.dump(self.metrics, f, indent=2)
 
     def update(self, new_eval_count, new_eval_duration_ns):
+        """
+        Update metrics based on a new run.
+
+        Args:
+            new_eval_count (int): Number of tokens generated.
+            new_eval_duration_ns (int): Duration in nanoseconds for token generation.
+        """
         if new_eval_duration_ns == 0:
             return
 
@@ -65,7 +80,16 @@ tracker = MetricsTracker(METRICS_FILE_PATH)
 
 # --- Core Functional Functions ---
 def _build_prompt(json_detections, question):
-    """Helper function: Build the full prompt string."""
+    """
+    Build a prompt string for the LLM based on JSON detections and a user question.
+
+    Args:
+        json_detections (str): JSON string of detection results.
+        question (str): User question about the image.
+
+    Returns:
+        str: Formatted prompt string for LLM input.
+    """
     detections_data = json.loads(json_detections)
     # The original is_sequence check is omitted here; add back if needed
     return (

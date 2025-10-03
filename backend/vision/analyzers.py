@@ -1,4 +1,4 @@
-# backend/vision/analyzers.py (修正版)
+# backend/vision/analyzers.py
 import numpy as np
 import cv2
 from ultralytics import YOLO
@@ -10,27 +10,52 @@ from .ocr import get_text_from_image
 from .color_clustering import dominant_colors
 
 class ColorAnalyzer(Analyzer):
-    """分析物体的主导颜色。"""
+    """Analyzes the dominant color of a detected object."""
     def analyze(self, detection: Detection, **kwargs):
+        """
+        Extracts the dominant colors from the detected object's mask region
+        and adds them as features to the detection.
+
+        Args:
+            detection (Detection): The object to analyze.
+            **kwargs: Additional arguments, expects 'original_image'.
+        """
         original_image = kwargs.get('original_image')
         if original_image is None: return
 
-        # 从BGR转换成 RGB 格式
+        # Convert the image from BGR to RGB format for color processing
         original_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2RGB)
+        # Extract dominant colors from the object region
         palette = dominant_colors(original_image, mask=detection.mask)
 
+        # Add the top two color names as features
         detection.add_feature('color_name', f'{palette[0]["name"] if palette else None} + {palette[1]["name"] if len(palette) > 1 else None}')
 
 class RecursiveYOLOAnalyzer(Analyzer):
-    """一个可以递归执行YOLO检测的分析器。"""
+    """Performs recursive YOLO-based detection and analysis."""
     def __init__(self, initial_config, other_analyzers=None):
+        """
+        Initializes the analyzer with configuration and optional additional analyzers.
+
+        Args:
+            initial_config (dict): The configuration for recursive detection.
+            other_analyzers (list[Analyzer], optional): Additional analyzers to apply at each detection level.
+        """
         print("Initializing Recursive YOLO Analyzer...")
         self.model_cache = {}
         self.initial_config = initial_config
         self.other_analyzers = other_analyzers if other_analyzers else []
 
     def _get_model(self, model_path):
-        """动态加载并缓存YOLO模型。"""
+        """
+        Loads and caches a YOLO model given its file path.
+
+        Args:
+            model_path (str): Path to the YOLO model file.
+
+        Returns:
+            YOLO: Loaded YOLO model or None if loading failed.
+        """
         if model_path not in self.model_cache:
             try:
                 self.model_cache[model_path] = YOLO(model_path)
@@ -41,7 +66,17 @@ class RecursiveYOLOAnalyzer(Analyzer):
         return self.model_cache[model_path]
 
     def analyze(self, detection: Detection, **kwargs):
-        """这是递归分析的入口。"""
+        """
+        Entry point for recursive analysis. If detection is None, performs
+        initial detection on the provided image.
+
+        Args:
+            detection (Detection or None): Detection to analyze, or None for initial detection.
+            **kwargs: Additional arguments, expects 'original_image' and 'yolo_model'.
+
+        Returns:
+            list[Detection]: List of detections after analysis.
+        """
         if detection is None:
             image_bgr = kwargs.get('original_image')
             yolo_model = kwargs.get('yolo_model')
@@ -52,19 +87,26 @@ class RecursiveYOLOAnalyzer(Analyzer):
             return initial_detections
         return []
 
-    # --- 修正：修改函数签名，不再单独接收original_image ---
     def _recursive_analyze(self, detections: list, current_config: dict, **kwargs):
-        """递归地对检测结果进行分析和再检测。"""
+        """
+        Recursively analyzes detections and applies secondary YOLO models
+        based on configuration.
+
+        Args:
+            detections (list[Detection]): Detections to analyze at current level.
+            current_config (dict): Recursive detection configuration.
+            **kwargs: Additional arguments, includes 'original_image' and 'yolo_model'.
+        """
         original_image = kwargs.get('original_image')
         yolo_model = kwargs.get('yolo_model')
 
         for detection in detections:
-            # --- 1. 对当前层级的每个物体应用基础分析器 ---
+            # Apply additional analyzers to each detection
             analyzer_kwargs = {**kwargs, 'yolo_model': yolo_model}
             for analyzer in self.other_analyzers:
                 analyzer.analyze(detection, **analyzer_kwargs)
 
-            # --- 2. 检查是否需要进行下一层级的检测 ---
+            # Check if the current detection triggers secondary detection
             if detection.class_name in current_config:
                 sub_config_node = current_config[detection.class_name]
                 model_path = sub_config_node.get('model_path')
@@ -72,9 +114,11 @@ class RecursiveYOLOAnalyzer(Analyzer):
                 
                 secondary_model = self._get_model(model_path)
                 if secondary_model and detection.roi is not None and detection.roi.size > 0:
-                    
+
+                    # Perform secondary detection within the ROI
                     sub_detections = get_initial_detections(detection.roi, secondary_model)
                     
+                    # Adjust bounding boxes to global image coordinates
                     parent_x1, parent_y1 = detection.bbox[0], detection.bbox[1]
                     for sub_d in sub_detections:
                         sub_d.bbox = [
@@ -82,26 +126,24 @@ class RecursiveYOLOAnalyzer(Analyzer):
                             parent_x1 + sub_d.bbox[2], parent_y1 + sub_d.bbox[3]
                         ]
                     
+                    # Apply post-processing rules if defined
                     if 'post_rules' in sub_config_node:
                         rules = sub_config_node.get('post_rules', [])
                         
-                        # 检查是否存在通配符规则
+                        # Handle wildcard rules
                         wildcard_rule = next((rule for rule in rules if rule.get('class') == '*'), None)
 
                         if wildcard_rule:
-                            # --- A. 如果有通配符规则，则对所有子检测统一处理 ---
                             max_detections = wildcard_rule.get('max_detections', -1)
                             strategy = wildcard_rule.get('strategy', 'highest_confidence')
 
                             if max_detections != -1 and len(sub_detections) > max_detections:
                                 if strategy == 'highest_confidence':
-                                    # 按置信度对所有子检测进行降序排序
                                     sub_detections.sort(key=lambda d: d.confidence, reverse=True)
-                                # 只保留置信度最高的N个结果
                                 sub_detections = sub_detections[:max_detections]
                         
                         else:
-                            # --- B. 如果没有通配符规则，则执行原有的按类别处理逻辑 ---
+                            # Apply rules per class
                             grouped_sub_detections = {}
                             for sub_d in sub_detections:
                                 grouped_sub_detections.setdefault(sub_d.class_name, []).append(sub_d)
@@ -109,7 +151,6 @@ class RecursiveYOLOAnalyzer(Analyzer):
                             final_sub_detections = []
                             processed_classes = set()
 
-                            # 应用规则
                             for rule in rules:
                                 rule_class = rule['class']
                                 if rule_class in grouped_sub_detections:
@@ -126,7 +167,7 @@ class RecursiveYOLOAnalyzer(Analyzer):
                                     else:
                                         final_sub_detections.extend(class_detections)
                             
-                            # 将没有应用规则的类别重新加回去
+                            # Re-add detections without rules
                             for class_name, dets in grouped_sub_detections.items():
                                 if class_name not in processed_classes:
                                     final_sub_detections.extend(dets)
@@ -134,7 +175,7 @@ class RecursiveYOLOAnalyzer(Analyzer):
                             sub_detections = final_sub_detections
                     detection.add_feature('sub_detections', sub_detections)
                     
-                    # --- 修正：准备下一轮递归的kwargs ---
+                    # Prepare kwargs for next recursive level
                     if next_level_config:
                         next_kwargs = kwargs.copy()
                         next_kwargs['yolo_model'] = secondary_model
@@ -161,8 +202,10 @@ class GridPositionAnalyzer(Analyzer):
 
     def analyze(self, detection: list[Detection]):
         """
-        Determines the grid position of the detection and updates it.
-        :param detection: The Detection object to analyze.
+        Computes the grid cell for each detection and updates its features.
+
+        Args:
+            detections (list[Detection]): List of detections to analyze.
         """
         for d in detection:
 
@@ -184,17 +227,18 @@ class GridPositionAnalyzer(Analyzer):
 
 class OCRAnalyzer(Analyzer):
     """
-    对指定的检测对象运行OCR，提取文字信息。
+    Performs OCR on specific detected objects to extract text information.
     """
     def analyze(self, detection: Detection, **kwargs):
         """
-        如果检测对象的类别在配置文件的白名单中，则对其ROI进行OCR。
+        Runs OCR if the detection's class is in the OCR-enabled whitelist.
+
+        Args:
+            detection (Detection): The object to analyze.
+            **kwargs: Additional arguments (unused here).
         """
-        # 检查该物体的类别是否在配置文件指定的OCR名单中
         if detection.class_name in config.OCR_ENABLED_CLASSES:
-            # 调用OCR函数处理物体的ROI
             recognized_text = get_text_from_image(detection.roi)
             
-            # 如果识别到了文字，就将其添加到特征字典中
             if recognized_text:
                 detection.add_feature('text', recognized_text)

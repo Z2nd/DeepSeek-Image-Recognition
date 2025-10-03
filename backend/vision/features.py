@@ -5,8 +5,19 @@ from sklearn.cluster import KMeans
 from backend import config
 
 def get_dominant_color(image, mask=None, color_space='HSL', n_clusters=1):
-    """使用K-Means提取图像区域的主导颜色。"""
-    # 提取感兴趣区域的像素
+    """
+    Extract the dominant color from a region of an image using K-Means clustering.
+
+    Args:
+        image (np.ndarray): Input image in BGR format.
+        mask (np.ndarray, optional): Binary mask specifying the region of interest. Defaults to None.
+        color_space (str, optional): Color space to use ('HSV' or 'HSL'). Defaults to 'HSL'.
+        n_clusters (int, optional): Number of clusters for K-Means. Defaults to 1.
+
+    Returns:
+        tuple[list[float], str]: The dominant color as a list of floats [C1, C2, C3], and its approximate color name.
+    """
+    # Extract pixels from the region of interest
     if mask is not None:
         pixels = image[mask > 0]
     else:
@@ -15,7 +26,7 @@ def get_dominant_color(image, mask=None, color_space='HSL', n_clusters=1):
     if len(pixels) == 0:
         return [0, 0, 0], 'unknown'
 
-    # 转换颜色空间
+    # Convert color space if needed
     if color_space == 'HSV':
         pixels_converted = cv2.cvtColor(pixels[np.newaxis, :, :], cv2.COLOR_BGR2HSV).reshape(-1, 3)
     elif color_space == 'HSL':
@@ -23,11 +34,11 @@ def get_dominant_color(image, mask=None, color_space='HSL', n_clusters=1):
     else:
         raise ValueError("Unsupported color space. Use 'HSV' or 'HSL'.")
 
-    # K-Means聚类
+    # Apply K-Means clustering to find dominant color
     kmeans = KMeans(n_clusters=n_clusters, random_state=0, n_init='auto').fit(pixels_converted)
     dominant_color = kmeans.cluster_centers_[0].astype(float).tolist()
     
-    # 转换色调并获取颜色名称
+    # Convert hue to 0-360 scale and determine approximate color name
     hue = dominant_color[0] * 2  # OpenCV Hue (0-180) to 0-360
     color_name = 'unknown'
     for (h_min, h_max), name in config.COLOR_NAMES.items():
@@ -35,7 +46,7 @@ def get_dominant_color(image, mask=None, color_space='HSL', n_clusters=1):
             color_name = name
             break
     
-    # 检查灰度色
+    # Adjust for grayscale/near-neutral colors
     saturation = dominant_color[1]
     value_or_lightness = dominant_color[2]
     if (color_space == 'HSV' and (saturation < 25 or value_or_lightness < 25)) or \
